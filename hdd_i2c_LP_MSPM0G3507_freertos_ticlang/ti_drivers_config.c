@@ -165,17 +165,17 @@ const I2CMSPM0_HWAttrs I2CMSPM0HWAttrs[CONFIG_I2C_COUNT] = {
     /* CONFIG_I2C_TMP */
     /* LaunchPad I2C */
     {
-        .i2c         = I2C_INST,
-        .intNum      = I2C_INST_INT_IRQN,
+        .i2c         = I2C1_INST,
+        .intNum      = I2C1_INST_INT_IRQN,
         .intPriority = (~0),
 
-        .sdaPincm    = GPIO_I2C_IOMUX_SDA,
-        .sdaPinIndex = GPIO_I2C_SDA_PIN,
-        .sdaPinMux   = GPIO_I2C_IOMUX_SDA_FUNC,
+        .sdaPincm    = GPIO_I2C1_IOMUX_SDA,
+        .sdaPinIndex = GPIO_I2C1_SDA_PIN,
+        .sdaPinMux   = GPIO_I2C1_IOMUX_SDA_FUNC,
 
-        .sclPincm    = GPIO_I2C_IOMUX_SCL,
-        .sclPinIndex = GPIO_I2C_SCL_PIN,
-        .sclPinMux   = GPIO_I2C_IOMUX_SCL_FUNC,
+        .sclPincm    = GPIO_I2C1_IOMUX_SCL,
+        .sclPinIndex = GPIO_I2C1_SCL_PIN,
+        .sclPinMux   = GPIO_I2C1_IOMUX_SCL_FUNC,
 
         .clockSource              = DL_I2C_CLOCK_BUSCLK,
         .clockDivider             = DL_I2C_CLOCK_DIVIDE_1,

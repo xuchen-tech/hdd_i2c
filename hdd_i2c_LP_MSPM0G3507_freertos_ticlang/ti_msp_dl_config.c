@@ -55,12 +55,10 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
 {
     DL_GPIO_reset(GPIOA);
     DL_GPIO_reset(GPIOB);
-    DL_UART_reset(CONFIG_UART_0_INST);
     DL_I2C_reset(I2C_INST);
 
     DL_GPIO_enablePower(GPIOA);
     DL_GPIO_enablePower(GPIOB);
-    DL_UART_enablePower(CONFIG_UART_0_INST);
     DL_I2C_enablePower(I2C_INST);
     delay_cycles(POWER_STARTUP_DELAY);
 }

@@ -38,9 +38,9 @@
 #include <unistd.h>
 
 /* Driver Header files */
-#include <ti/display/DisplayUart.h>
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/I2C.h>
+#include <ti/segger/SEGGER_RTT.h>
 
 /* Driver configuration */
 #include "ti_drivers_config.h"
@@ -53,8 +53,7 @@
 #define TMP116_LAUNCHPAD_ADDR 0x49
 
 /* Number of supported sensor iterations */
-#define TMP_COUNT 2
-uint8_t gBuffer[CONFIG_UART_BUFFER_LENGTH] = {0};
+#define TMP_COUNT 1
 
 /*
  * Data structure containing currently supported I2C TMP sensors.
@@ -64,14 +63,12 @@ static const struct {
     uint8_t address;
     uint8_t resultReg;
     char *id;
-} sensors[TMP_COUNT] = {{TMP11X_BASSENSORS_ADDR, TMP11X_RESULT_REG, "11X"},
-    {TMP116_LAUNCHPAD_ADDR, TMP11X_RESULT_REG, "116"}};
+} sensors[TMP_COUNT] = {{0x6A, 0x00, "QMI8658A"}};
 
 static uint8_t targetAddress;
-static Display_Handle display;
 
 static void i2cErrorHandler(
-    I2C_Transaction *transaction, Display_Handle display);
+    I2C_Transaction *transaction);
 
 /*
  *  ======== mainThread ========
@@ -88,9 +85,10 @@ void *mainThread(void *arg0)
     I2C_Transaction i2cTransaction;
 
     /* Call driver init functions */
-    Display_init();
+    SEGGER_RTT_Init();
     GPIO_init();
     I2C_init();
+
 
     /* Configure the LED and if applicable, the TMP_EN pin */
     GPIO_setConfig(CONFIG_GPIO_LED_0,
@@ -102,27 +100,21 @@ void *mainThread(void *arg0)
     sleep(1);
 #endif
 
-    /* Open the UART display for output */
-    display = Display_open(Display_Type_UART, NULL);
-    if (display == NULL) {
-        while (1) {
-        }
-    }
 
     /* Turn on user LED to indicate successful initialization */
     GPIO_write(CONFIG_GPIO_LED_0, CONFIG_LED_ON);
-    Display_printf(display, 0, 0, "Starting the i2ctmp example\n");
+    SEGGER_RTT_printf(0, "Starting the i2ctmp example\n");
 
     /* Create I2C for usage */
     I2C_Params_init(&i2cParams);
     i2cParams.bitRate = I2C_100kHz;
     i2c               = I2C_open(CONFIG_I2C_TMP, &i2cParams);
     if (i2c == NULL) {
-        Display_printf(display, 0, 0, "Error Initializing I2C\n");
+        SEGGER_RTT_printf(0, "Error Initializing I2C\n");
         while (1) {
         }
     } else {
-        Display_printf(display, 0, 0, "I2C Initialized!\n");
+        SEGGER_RTT_printf(0, "I2C Initialized!\n");
     }
 
     /* Common I2C transaction setup */
@@ -130,6 +122,7 @@ void *mainThread(void *arg0)
     i2cTransaction.writeCount = 1;
     i2cTransaction.readBuf    = rxBuffer;
     i2cTransaction.readCount  = 0;
+
 
     /*
      * Determine which I2C sensors are present by querying known I2C
@@ -141,47 +134,51 @@ void *mainThread(void *arg0)
 
         if (I2C_transfer(i2c, &i2cTransaction)) {
             targetAddress = sensors[i].address;
-            Display_printf(display, 0, 0,
+            SEGGER_RTT_printf(0,
                 "Detected TMP%s sensor with target"
-                " address 0x%x",
+                " address 0x%x\n",
                 sensors[i].id, sensors[i].address);
         } else {
-            i2cErrorHandler(&i2cTransaction, display);
+            i2cErrorHandler(&i2cTransaction);
         }
     }
 
     /* If we never assigned a target address */
     if (targetAddress == 0) {
-        Display_printf(display, 0, 0, "Failed to detect a sensor!");
+        SEGGER_RTT_printf(0, "Failed to detect a sensor!\n");
         I2C_close(i2c);
         while (1) {
         }
     }
-
-    Display_printf(display, 0, 0, "\nUsing last known sensor for samples.");
+    SEGGER_RTT_printf(0, "\nUsing last known sensor for samples.\n");
     i2cTransaction.targetAddress = targetAddress;
 
-    /* Take 20 samples and print them out onto the console */
-    for (sample = 0; sample < 20; sample++) {
-        i2cTransaction.readCount = 2;
-        if (I2C_transfer(i2c, &i2cTransaction)) {
-            /*
-             * Extract degrees C from the received data;
-             * see TMP sensor datasheet
-             */
-            temperature = (rxBuffer[0] << 8) | (rxBuffer[1]);
-            temperature *= 0.0078125;
+    /* If the detected sensor is QMI8658A, read WHO_AM_I and Revision ID */
+    if (targetAddress == 0x6A) {
+        i2cTransaction.targetAddress = targetAddress;
 
-            Display_printf(
-                display, 0, 0, "Sample %u: %d C", sample, temperature);
+        /* Read WHO_AM_I (reg 0x00) using write-then-read sequence */
+        txBuffer[0] = 0x00;
+        i2cTransaction.writeCount = 1;
+        i2cTransaction.readCount = 1;
+        if (!I2C_transfer(i2c, &i2cTransaction)) {
+            i2cErrorHandler(&i2cTransaction);
         } else {
-            i2cErrorHandler(&i2cTransaction, display);
+            SEGGER_RTT_printf(0, "QMI8658A WHO_AM_I: 0x%02x\n", rxBuffer[0]);
         }
 
-        /* Sleep for 1 second */
-        sleep(1);
+        /* Read Revision ID (reg 0x01) using write-then-read sequence */
+        txBuffer[0] = 0x01;
+        i2cTransaction.writeCount = 1;
+        i2cTransaction.readCount = 1;
+        if (!I2C_transfer(i2c, &i2cTransaction)) {
+            i2cErrorHandler(&i2cTransaction);
+        } else {
+            SEGGER_RTT_printf(0, "QMI8658A Revision ID: 0x%02x\n", rxBuffer[0]);
+        }
     }
-    Display_printf(display, 0, 0, "I2C closed!");
+
+    SEGGER_RTT_printf(0, "I2C closed!\n");
     I2C_close(i2c);
     return (NULL);
 }
@@ -190,46 +187,46 @@ void *mainThread(void *arg0)
  *  ======== i2cErrorHandler ========
  */
 static void i2cErrorHandler(
-    I2C_Transaction *transaction, Display_Handle display)
+    I2C_Transaction *transaction)
 {
     switch (transaction->status) {
         case I2C_STATUS_TIMEOUT:
-            Display_printf(display, 0, 0, "I2C transaction timed out!");
+            SEGGER_RTT_printf(0, "I2C transaction timed out!\n");
             break;
         case I2C_STATUS_CLOCK_TIMEOUT:
-            Display_printf(display, 0, 0, "I2C serial clock line timed out!");
+            SEGGER_RTT_printf(0, "I2C serial clock line timed out!\n");
             break;
         case I2C_STATUS_ADDR_NACK:
-            Display_printf(display, 0, 0,
+            SEGGER_RTT_printf(0,
                 "I2C target address 0x%x not"
-                " acknowledged!",
+                " acknowledged!\n",
                 transaction->targetAddress);
             break;
         case I2C_STATUS_DATA_NACK:
-            Display_printf(display, 0, 0, "I2C data byte not acknowledged!");
+            SEGGER_RTT_printf(0, "I2C data byte not acknowledged!\n");
             break;
         case I2C_STATUS_ARB_LOST:
-            Display_printf(
-                display, 0, 0, "I2C arbitration to another controller!");
+            SEGGER_RTT_printf(
+                0, "I2C arbitration to another controller!\n");
             break;
         case I2C_STATUS_INCOMPLETE:
-            Display_printf(
-                display, 0, 0, "I2C transaction returned before completion!");
+            SEGGER_RTT_printf(
+                0, "I2C transaction returned before completion!\n");
             break;
         case I2C_STATUS_BUS_BUSY:
-            Display_printf(display, 0, 0, "I2C bus is already in use!");
+            SEGGER_RTT_printf(0, "I2C bus is already in use!\n");
             break;
         case I2C_STATUS_CANCEL:
-            Display_printf(display, 0, 0, "I2C transaction cancelled!");
+            SEGGER_RTT_printf(0, "I2C transaction cancelled!\n");
             break;
         case I2C_STATUS_INVALID_TRANS:
-            Display_printf(display, 0, 0, "I2C transaction invalid!");
+            SEGGER_RTT_printf(0, "I2C transaction invalid!\n");
             break;
         case I2C_STATUS_ERROR:
-            Display_printf(display, 0, 0, "I2C generic error!");
+            SEGGER_RTT_printf(0, "I2C generic error!\n");
             break;
         default:
-            Display_printf(display, 0, 0, "I2C undefined error case!");
+            SEGGER_RTT_printf(0, "I2C undefined error case!\n");
             break;
     }
 }

@@ -78,8 +78,8 @@ extern "C" {
  */
 
 extern const uint_least8_t CONFIG_GPIO_LED_0_CONST;
-#define CONFIG_GPIO_LED_0 0
-#define CONFIG_GPIO_LED_0_IOMUX (IOMUX_PINCM1)
+#define CONFIG_GPIO_LED_0 14
+#define CONFIG_GPIO_LED_0_IOMUX (IOMUX_PINCM36)
 
 /* Enable to the below code to configure power control of TMP117 */
 #ifdef CONFIG_GPIO_TMP_EN
@@ -93,8 +93,8 @@ extern const uint_least8_t GPIO_pinLowerBound;
 extern const uint_least8_t GPIO_pinUpperBound;
 
 /* LEDs are active low */
-#define CONFIG_GPIO_LED_ON (0)
-#define CONFIG_GPIO_LED_OFF (1)
+#define CONFIG_GPIO_LED_ON (1)
+#define CONFIG_GPIO_LED_OFF (0)
 
 #define CONFIG_LED_ON (CONFIG_GPIO_LED_ON)
 #define CONFIG_LED_OFF (CONFIG_GPIO_LED_OFF)
@@ -117,31 +117,6 @@ extern const uint_least8_t CONFIG_I2C_TMP_CONST;
 
 /* ---- CONFIG_I2C_TMP I2C bus components ---- */
 
-/* BMA222E address and max speed */
-#define CONFIG_I2C_TMP_BMA222E_ADDR (0x18)
-#define CONFIG_I2C_TMP_BMA222E_MAXSPEED (400U) /* kbps */
-
-/* TMP006 address and max speed */
-#define CONFIG_I2C_TMP_TMP006_ADDR (0x41)
-#define CONFIG_I2C_TMP_TMP006_MAXSPEED (3400U) /* kbps */
-
-/* BP-BASSENSORSMKII/TMP117 address and max speed */
-#define CONFIG_I2C_TMP_BP_BASSENSORSMKII_TMP117_ADDR (0x48)
-#define CONFIG_I2C_TMP_BP_BASSENSORSMKII_TMP117_MAXSPEED (400U) /* kbps */
-
-/* BP-BASSENSORSMKII/OPT3001 address and max speed */
-#define CONFIG_I2C_TMP_BP_BASSENSORSMKII_OPT3001_ADDR (0x44)
-#define CONFIG_I2C_TMP_BP_BASSENSORSMKII_OPT3001_MAXSPEED (2600U) /* kbps */
-
-/* BP-BASSENSORSMKII/HDC2080 address and max speed */
-#define CONFIG_I2C_TMP_BP_BASSENSORSMKII_HDC2080_ADDR (0x40)
-#define CONFIG_I2C_TMP_BP_BASSENSORSMKII_HDC2080_MAXSPEED (400U) /* kbps */
-
-/* BP-BASSENSORSMKII/BMI160_BMM150 address and max speed */
-#define CONFIG_I2C_TMP_BP_BASSENSORSMKII_BMI160_BMM150_ADDR (0x69)
-#define CONFIG_I2C_TMP_BP_BASSENSORSMKII_BMI160_BMM150_MAXSPEED \
-    (1000U) /* kbps */
-
 /* CONFIG_I2C_TMP max speed (supported by all components) */
 #define CONFIG_I2C_TMP_MAXSPEED (400U) /* kbps */
 #define CONFIG_I2C_TMP_MAXBITRATE ((I2C_BitRate) I2C_400kHz)
@@ -152,42 +127,14 @@ extern const uint_least8_t CONFIG_I2C_TMP_CONST;
 #define I2C_INST_INT_IRQN I2C1_INT_IRQn
 #define I2C_BUS_SPEED_HZ 400000
 
-#define GPIO_I2C_SDA_PIN (35)
-#define GPIO_I2C_IOMUX_SDA (IOMUX_PINCM16)
-#define GPIO_I2C_IOMUX_SDA_FUNC IOMUX_PINCM16_PF_I2C1_SDA
+#define GPIO_I2C_SDA_PIN (16)
+#define GPIO_I2C_IOMUX_SDA (IOMUX_PINCM38)
+#define GPIO_I2C_IOMUX_SDA_FUNC IOMUX_PINCM38_PF_I2C1_SDA
 
-#define GPIO_I2C_SCL_PIN (34)
-#define GPIO_I2C_IOMUX_SCL (IOMUX_PINCM15)
-#define GPIO_I2C_IOMUX_SCL_FUNC IOMUX_PINCM15_PF_I2C1_SCL
+#define GPIO_I2C_SCL_PIN (15)
+#define GPIO_I2C_IOMUX_SCL (IOMUX_PINCM37)
+#define GPIO_I2C_IOMUX_SCL_FUNC IOMUX_PINCM37_PF_I2C1_SCL
 
-/*
- *  ======== UART ========
- */
-
-/*
- *  TX: P55
- *  RX: P57
- *  XDS110 UART
- */
-extern const uint_least8_t CONFIG_UART_0_CONST;
-//#define CONFIG_UART_0                      0
-#define CONFIG_TI_DRIVERS_UART_COUNT 1
-/*********************************************************/
-#define CONFIG_UART_COUNT 1
-#define CONFIG_UART_BUFFER_LENGTH 1
-
-#define CONFIG_DMA_COUNT 1
-#define CONFIG_DMA_CH_COUNT 1
-#define DEFAULT_DMA_PRIORITY 31
-
-extern const uint_least8_t CONFIG_UART_0;
-extern const uint_least8_t UART_count;
-
-uint8_t rxBuffer[CONFIG_UART_BUFFER_LENGTH];
-uint8_t txBuffer[CONFIG_UART_BUFFER_LENGTH];
-
-/* clang-format on */
-void UART0_IRQHandler(void);
 /*
  *  ======== SYSCFG_DL_init ========
  *  Perform all required MSP DL initialization
@@ -199,11 +146,6 @@ void UART0_IRQHandler(void);
 /* clang-format off */
 
 #define POWER_STARTUP_DELAY                                                (16)
-
-
-/* Defines for CONFIG_UART_0 */
-#define CONFIG_UART_0_INST                                                 UART0
-#define CONFIG_UART_BAUD_RATE                                           (115200)
 
 /* Port definition for Pin Group GPIO_GRP_0 */
 #define GPIO_GRP_0_PORT                                                  (GPIOA)

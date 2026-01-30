@@ -10,6 +10,6 @@
 	<ignoreDefaultCCSSettings value="true"/>
 	<templateProperties value="id=freertos_builds_LP_MSPM0G3507_release_ticlang.projectspec.freertos_builds_LP_MSPM0G3507_release_ticlang,products=MSPM0-SDK,buildProfile=release"/>
 	<connection value="common/targetdb/connections/TIXDS110_Connection.xml"/>
-	<origin value="C:\TI\mspm0_sdk_2_09_00_01\kernel\freertos\builds\LP_MSPM0G3507\release\ticlang\freertos_builds_LP_MSPM0G3507_release_ticlang.projectspec"/>
+	<origin value="C:\ti\mspm0_sdk_2_09_00_01\kernel\freertos\builds\LP_MSPM0G3507\release\ticlang\freertos_builds_LP_MSPM0G3507_release_ticlang.projectspec"/>
 	<filesToOpen value=""/>
 </projectOptions>

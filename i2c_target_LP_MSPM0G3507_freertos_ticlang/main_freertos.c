@@ -53,9 +53,9 @@
 
 #include "ti_drivers_config.h"
 #include "ti_msp_dl_config.h"
-#include "display_shared.h"
 
 extern void *mainThread(void *arg0);
+extern void *i2cDetectThread(void *arg0);
 extern void *i2cControllerThread(void *arg0);
 extern void *pt100Thread(void *arg0);
 
@@ -122,6 +122,12 @@ int main(void)
     if (retc != 0) {
         /* pthread_create() failed */
         while (1) {
+        }
+    }
+    retc = pthread_create(&thread, &attrs, i2cDetectThread, NULL);
+    if (retc != 0) {
+        while(1) {
+            
         }
     }
 

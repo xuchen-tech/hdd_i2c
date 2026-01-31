@@ -1,3 +1,4 @@
+"./hdd_i2c_utils.o"
 "./i2ccontroller.o"
 "./i2ctargetApp.o"
 "./main_freertos.o"

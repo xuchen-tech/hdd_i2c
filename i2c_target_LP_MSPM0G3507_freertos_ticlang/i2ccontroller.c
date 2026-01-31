@@ -14,18 +14,21 @@
 #include <task.h>
 
 /* Driver Header files */
-
 #include <ti/drivers/GPIO.h>
-#include <ti/drivers/I2C.h>
 #include <ti/segger/SEGGER_RTT.h>
 
 /* Driver configuration */
 #include "ti_drivers_config.h"
 
+#include "i2ccontroller.h"
 #include "nas2300.h"
-#define BUFFER_SIZE 32
+#define BUFFER_SIZE 64
 uint8_t txBuffer[BUFFER_SIZE];
 uint8_t rxBuffer[BUFFER_SIZE];
+
+I2C_Handle i2cHandle;
+I2C_Params i2cParams;
+NAS2300_Config nasCfg;
 
 /* Number of supported sensor iterations */
 #define TMP_COUNT 1
@@ -56,15 +59,139 @@ static bool nas2300Init(I2C_Handle i2cHandle, I2C_Transaction *transaction, NAS2
 #define NSA2300_INIT_RETRY_US     (50000u)  /* 50ms */
 #define NSA2300_SAMPLE_RETRIES    (3u)
 
+static bool i2cReadReg(I2C_Handle i2cHandle, I2C_Transaction *t,
+                       uint8_t regAddr, uint8_t *out, size_t len)
+{
+    /* read: write regAddr(pointer) then repeated-start read len bytes */
+    uint8_t *tx = (uint8_t *)t->writeBuf;
+
+    tx[0] = regAddr;
+    t->writeCount = 1;
+
+    /* IMPORTANT: always read into the global rxBuffer owned by this module.
+     * Never point readBuf at a stack variable (it will dangle later).
+     */
+    t->readBuf   = rxBuffer;
+    t->readCount = len;
+
+    bool ok = I2C_transfer(i2cHandle, t);
+    if (ok && (out != NULL) && (len > 0)) {
+        memcpy(out, rxBuffer, len);
+    }
+    return ok;
+}
+
+bool readDeviceData(uint8_t *data, size_t len) {
+    I2C_Transaction i2cTransaction;
+    /* Common I2C transaction setup */
+    i2cTransaction.writeBuf   = txBuffer;
+    i2cTransaction.writeCount = 1;
+    i2cTransaction.readBuf    = rxBuffer;
+    i2cTransaction.readCount  = 0;
+
+    if (i2cHandle == NULL) {
+        return false;
+    }
+
+    i2cTransaction.targetAddress = HDD_I2C_TARGET_ADDRESS;
+
+    /* Downstream target may legally return 0x00 bytes when it has no payload
+     * ready yet (it won't NACK). Gate on Ready(0x81) so we don't silently copy
+     * an all-zero placeholder.
+     */
+    uint8_t readyLen = 0;
+    if (!i2cReadReg(i2cHandle, &i2cTransaction, REG_READY_0x81, &readyLen, sizeof(readyLen))) {
+        SEGGER_RTT_printf(0, "Failed to read downstream ready (0x%02x)\n", REG_READY_0x81);
+        return false;
+    }
+    if (readyLen < len) {
+        SEGGER_RTT_printf(0,
+            "Downstream not ready: readyLen=%u, need=%u\n",
+            (unsigned)readyLen, (unsigned)len);
+        return false;
+    }
+
+    if (!i2cReadReg(i2cHandle, &i2cTransaction, REG_DATA_0x03, data, len)) {
+        SEGGER_RTT_printf(0, "Failed to read data (reg 0x%02x..0x%02x)\n", 0x03, (uint8_t)(0x03 + len - 1));
+        return false;
+    }
+    return true;
+}
+
+bool detectI2CDevices(uint_least8_t targetAddress, uint8_t *devCount) {
+    if (i2cHandle == NULL) {
+        return false;
+    }
+    I2C_Transaction i2cTransaction;
+
+    i2cTransaction.writeBuf   = txBuffer;
+    i2cTransaction.writeCount = 1;
+    i2cTransaction.readBuf    = rxBuffer;
+    i2cTransaction.readCount  = 0;
+
+    i2cTransaction.targetAddress = HDD_I2C_TARGET_ADDRESS;
+
+    if (i2cReadReg(i2cHandle, &i2cTransaction, REG_DEV_COUNT_0x02, devCount, sizeof(uint8_t))) {
+        SEGGER_RTT_printf(0, "Detected device address 0x%x\n", HDD_I2C_TARGET_ADDRESS);
+        return true;
+    } else {
+        i2cErrorHandler(&i2cTransaction);
+        return false;
+    }
+}
+
+bool readNsa2300Raw24(uint32_t *pressure) {
+    uint8_t status = 0;
+    uint32_t p24 = 0;
+    I2C_Transaction i2cTransaction;
+    /* Common I2C transaction setup */
+    i2cTransaction.writeBuf   = txBuffer;
+    i2cTransaction.writeCount = 1;
+    i2cTransaction.readBuf    = rxBuffer;
+    i2cTransaction.readCount  = 0;
+
+    if (i2cHandle == NULL) {
+        return false;
+    }
+
+    i2cTransaction.targetAddress = HDD_I2C_NSA2300_ADDRESS;
+    if (!NAS2300_startSinglePressureConversion(i2cHandle, &i2cTransaction,
+                                                       txBuffer, sizeof(txBuffer),
+                                                       rxBuffer, sizeof(rxBuffer),
+                                                       &nasCfg, NULL)) {
+        SEGGER_RTT_printf(0, "Failed to write CMD (reg 0x%02x)\n", 0x30);
+        return false;
+    }
+    if (!NAS2300_waitDrdy(i2cHandle, &i2cTransaction,
+                                      txBuffer, sizeof(txBuffer),
+                                      rxBuffer, sizeof(rxBuffer),
+                                      &nasCfg,
+                                      HDD_I2C_NSA2300_MAX_POLLS,
+                                      1000,
+                                      &status)) {
+        SEGGER_RTT_printf(0, "Timeout waiting DRDY; STATUS=0x%02x\n", status);
+
+        return false;
+    }
+    if (!NAS2300_readPressureRaw24_burst(i2cHandle, &i2cTransaction,
+                                                 txBuffer, sizeof(txBuffer),
+                                                 rxBuffer, sizeof(rxBuffer),
+                                                 &nasCfg,
+                                                 &p24)) {
+        SEGGER_RTT_printf(0, "Failed to read pressure data (reg 0x%02x..0x%02x)\n", 0x06, (uint8_t)(0x06 + 2));
+        return false;
+    }
+    *pressure = p24;
+    return true;
+}
+
 /*
  *  ======== i2cControllerThread ========
  */
 void *i2cControllerThread(void *arg0) {
     int8_t i;
-    I2C_Handle i2cHandle;
-    I2C_Params i2cParams;
     I2C_Transaction i2cTransaction;
-    NAS2300_Config nasCfg;
+    bool next_device_exist = false;
 
     I2C_Params_init(&i2cParams);
     i2cParams.bitRate = I2C_400kHz;

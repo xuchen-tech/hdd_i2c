@@ -9,6 +9,7 @@ CMD_SRCS += \
 ../mspm0g3507.cmd 
 
 C_SRCS += \
+../hdd_i2c_utils.c \
 ../i2ccontroller.c \
 ../i2ctargetApp.c \
 ../main_freertos.c \
@@ -18,6 +19,7 @@ C_SRCS += \
 ../ti_msp_dl_config.c 
 
 C_DEPS += \
+./hdd_i2c_utils.d \
 ./i2ccontroller.d \
 ./i2ctargetApp.d \
 ./main_freertos.d \
@@ -27,6 +29,7 @@ C_DEPS += \
 ./ti_msp_dl_config.d 
 
 OBJS += \
+./hdd_i2c_utils.o \
 ./i2ccontroller.o \
 ./i2ctargetApp.o \
 ./main_freertos.o \
@@ -36,6 +39,7 @@ OBJS += \
 ./ti_msp_dl_config.o 
 
 OBJS__QUOTED += \
+"hdd_i2c_utils.o" \
 "i2ccontroller.o" \
 "i2ctargetApp.o" \
 "main_freertos.o" \
@@ -45,6 +49,7 @@ OBJS__QUOTED += \
 "ti_msp_dl_config.o" 
 
 C_DEPS__QUOTED += \
+"hdd_i2c_utils.d" \
 "i2ccontroller.d" \
 "i2ctargetApp.d" \
 "main_freertos.d" \
@@ -54,6 +59,7 @@ C_DEPS__QUOTED += \
 "ti_msp_dl_config.d" 
 
 C_SRCS__QUOTED += \
+"../hdd_i2c_utils.c" \
 "../i2ccontroller.c" \
 "../i2ctargetApp.c" \
 "../main_freertos.c" \

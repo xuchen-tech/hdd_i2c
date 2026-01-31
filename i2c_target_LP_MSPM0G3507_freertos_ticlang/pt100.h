@@ -80,6 +80,7 @@ void PT100_publish_latest(int16_t temp_x10);
  * - updates g_latestTemp_x10/g_latestTempSeq
  */
 void *pt100Thread(void *arg0);
+bool getPt100Temp_x10(uint16_t *temp_x10);
 
 /* Task handle for notifying the PT100 thread */
 TaskHandle_t PT100_getTaskHandle(void);

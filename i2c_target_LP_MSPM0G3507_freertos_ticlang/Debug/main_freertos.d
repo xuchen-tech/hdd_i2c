@@ -115,8 +115,7 @@ main_freertos.o: ../main_freertos.c \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/ClockP.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/utils/RingBuf.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h \
- ../ti_msp_dl_config.h ../display_shared.h \
- C:/ti/mspm0_sdk_2_09_00_01/source/ti/display/Display.h
+ ../ti_msp_dl_config.h
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/pthread.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/sys/types.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/sys/_internal.h:
@@ -232,5 +231,3 @@ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/ClockP.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/utils/RingBuf.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h:
 ../ti_msp_dl_config.h:
-../display_shared.h:
-C:/ti/mspm0_sdk_2_09_00_01/source/ti/display/Display.h:

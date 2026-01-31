@@ -10,6 +10,11 @@
 volatile int16_t g_latestTemp_x10 = 0;
 volatile uint32_t g_latestTempSeq = 0;
 
+ADC_Handle adc;
+ADC_Params adcParams;
+
+PT100_Config pt100Cfg;
+
 static TaskHandle_t g_pt100TaskHandle = NULL;
 
 TaskHandle_t PT100_getTaskHandle(void)
@@ -144,10 +149,6 @@ void *pt100Thread(void *arg0)
 {
     (void)arg0;
 
-    ADC_Handle adc;
-    ADC_Params adcParams;
-    PT100_Config pt100Cfg;
-
     /* Capture task handle so other code can notify us */
     g_pt100TaskHandle = xTaskGetCurrentTaskHandle();
 
@@ -183,4 +184,19 @@ void *pt100Thread(void *arg0)
             SEGGER_RTT_printf(0, "PT100 on-demand sample failed\n");
         }
     }
+}
+
+bool getPt100Temp_x10(uint16_t *temp_x10) {
+    uint16_t localRaw = 0;
+    uint32_t local_uV = 0;
+    if (adc == NULL) {
+        return false;
+    }
+    int_fast16_t res = ADC_convert(adc, &localRaw);
+    if (res != ADC_STATUS_SUCCESS) {
+        return false;
+    }
+    local_uV = ADC_convertRawToMicroVolts(adc, localRaw);
+
+    return PT100_convert_adc_uV_to_temp_x10(&pt100Cfg, local_uV, temp_x10, NULL, NULL);
 }

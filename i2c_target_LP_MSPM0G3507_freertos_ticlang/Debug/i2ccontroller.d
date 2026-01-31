@@ -16,9 +16,11 @@ i2ccontroller.o: ../i2ccontroller.c \
  C:/ti/mspm0_sdk_2_09_00_01/kernel/freertos/Source/include/list.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/GPIO.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/gpio/GPIOMSPM0.h \
- C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h \
- C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/msp.h \
+ C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h \
+ C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h \
+ ../ti_drivers_config.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/DeviceFamily.h \
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/msp.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/m0p/mspm0g350x.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include/core_cm0plus.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/hw_adc12.h \
@@ -47,11 +49,6 @@ i2ccontroller.o: ../i2ccontroller.c \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/hw_debugss.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/hw_sysctl.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/sysctl/hw_sysctl_mspm0g1x0x_g3x0x.h \
- C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/HwiP.h \
- C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/SemaphoreP.h \
- C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h \
- C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h \
- ../ti_drivers_config.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/dl_gpio.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/dl_common.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/driverlib.h \
@@ -105,6 +102,8 @@ i2ccontroller.o: ../i2ccontroller.c \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/m0p/dl_interrupt.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/m0p/dl_systick.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2CTarget.h \
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/HwiP.h \
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/SemaphoreP.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/UART.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/ADC.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dma/DMAMSPM0.h \
@@ -112,7 +111,8 @@ i2ccontroller.o: ../i2ccontroller.c \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/uart/UARTSupportMSPM0.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/ClockP.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/utils/RingBuf.h \
- ../nas2300.h
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h ../i2ccontroller.h \
+ ../hdd_i2c_config.h ../nas2300.h
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/unistd.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/sys/types.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/sys/_internal.h:
@@ -128,9 +128,11 @@ C:/ti/mspm0_sdk_2_09_00_01/kernel/freertos/Source/include/task.h:
 C:/ti/mspm0_sdk_2_09_00_01/kernel/freertos/Source/include/list.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/GPIO.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/gpio/GPIOMSPM0.h:
-C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h:
-C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/msp.h:
+C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h:
+C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h:
+../ti_drivers_config.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/DeviceFamily.h:
+C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/msp.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/m0p/mspm0g350x.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include/core_cm0plus.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/hw_adc12.h:
@@ -159,11 +161,6 @@ C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/hw_cpuss.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/hw_debugss.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/hw_sysctl.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/sysctl/hw_sysctl_mspm0g1x0x_g3x0x.h:
-C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/HwiP.h:
-C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/SemaphoreP.h:
-C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h:
-C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h:
-../ti_drivers_config.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/dl_gpio.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/dl_common.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/driverlib.h:
@@ -217,6 +214,8 @@ C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/dl_wwdt.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/m0p/dl_interrupt.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/m0p/dl_systick.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2CTarget.h:
+C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/HwiP.h:
+C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/SemaphoreP.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/UART.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/ADC.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dma/DMAMSPM0.h:
@@ -224,4 +223,7 @@ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/uart/UARTMSPM0.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/uart/UARTSupportMSPM0.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/ClockP.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/utils/RingBuf.h:
+C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h:
+../i2ccontroller.h:
+../hdd_i2c_config.h:
 ../nas2300.h:

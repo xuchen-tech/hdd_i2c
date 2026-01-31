@@ -54,22 +54,26 @@
 #include <ti/drivers/I2CTarget.h>
 #include <ti/segger/SEGGER_RTT.h>
 #include "cmdinterface.h"
+#include "hdd_i2c_config.h"
+#include "i2ccontroller.h"
 
 #include "pt100.h"
 #include "nas2300.h"
 
 /* Driver configuration */
 #include "ti_drivers_config.h"
+#include "hdd_i2c_config.h"
 
-#define REG_MODE_0x80 0x80
-#define REG_READY_0x81 0x81
-#define REG_DATA_0x82 0x82
 
 /* With 0x81 reporting length as a uint8_t, max representable length is 255.
  * Use an 8-byte multiple to keep room for future expansion.
  */
 #define READY_PAYLOAD_MAX_LEN_BYTES 248
 
+static uint8_t g_part_id = HDD_I2C_PART_ID;
+static uint8_t g_revision_id = HDD_I2C_REVISION_ID;
+static uint8_t g_device_count = 0;
+static uint8_t g_device_data = 0;
 static volatile uint8_t g_regMode = 0x00;   /* reg 0x80: Mode */
 static volatile uint8_t g_regReady = 0x00;  /* reg 0x81: Ready */
 static bool g_i2cIsReadPhase = false;       /* set by callback before calling cmdHandler() */
@@ -120,6 +124,9 @@ Command cmd;
 static int_fast16_t i2cTargetCallback(
     I2CTarget_Handle handle, I2CTarget_Event event, uint8_t *val);
 static int cmdHandler(I2CTarget_Handle handle, uint8_t *data);
+static int cmdCtlGetPartId(I2CTarget_Handle handle, uint8_t *data);
+static int cmdCtlGetDevCount(I2CTarget_Handle handle, uint8_t *data);
+static int cmdCtlGetDevData(I2CTarget_Handle handle, uint8_t *data);
 static int cmdCtlSetStatus(I2CTarget_Handle handle, uint8_t *data);
 static int cmdCtlGetStatus(I2CTarget_Handle handle, uint8_t *data);
 static int cmdCtlWriteBlock(I2CTarget_Handle handle, uint8_t *data);
@@ -150,6 +157,68 @@ static uint16_t crc16_modbus(const uint8_t *data, size_t len)
     }
     return crc;
 }
+
+void *i2cDetectThread(void *arg0) {
+    uint8_t devCount;
+    uint16_t pt100_temp = 0;
+    uint32_t nsa2300_pressure = 0;
+    uint8_t local[8] = {0};
+    static uint8_t downstreamPayload[READY_PAYLOAD_MAX_LEN_BYTES - 8];
+    (void)arg0;
+    while(true) {
+        usleep(HDD_I2C_DEV_DETECT_PERIOD);
+        if (detectI2CDevices(HDD_I2C_TARGET_ADDRESS, &devCount)) {
+            g_device_count = devCount;
+        } else {
+            g_device_count = 0;
+        }
+        g_device_count += 1; /* Always count self */
+        SEGGER_RTT_printf(0, "dev count: %d\n", g_device_count);
+        if (getPt100Temp_x10(&pt100_temp)) {
+            SEGGER_RTT_printf(0, "pt100 temp:%d\n", pt100_temp);
+        }
+        if (readNsa2300Raw24(&nsa2300_pressure)) {
+            SEGGER_RTT_printf(0, "nsa2300 pressure:%d\n", nsa2300_pressure);
+        }
+        local[0] = (uint8_t)((uint32_t)nsa2300_pressure & 0xFFu);
+        local[1] = (uint8_t)(((uint32_t)nsa2300_pressure >> 8) & 0xFFu);
+        local[2] = (uint8_t)(((uint32_t)nsa2300_pressure >> 16) & 0xFFu);
+        local[3] = (uint8_t)(((uint32_t)nsa2300_pressure >> 24) & 0xFFu);
+        /* 2 bytes temp_x10 (little-endian) */
+        local[4] = (uint8_t)((uint16_t)pt100_temp & 0xFFu);
+        local[5] = (uint8_t)(((uint16_t)pt100_temp >> 8) & 0xFFu);
+        /* CRC16 over first 6 bytes, little-endian */
+        uint16_t crc = crc16_modbus(local, 6);
+        local[6] = (uint8_t)(crc & 0xFFu);
+        local[7] = (uint8_t)((crc >> 8) & 0xFFu);
+        memcpy((void *)g_readyPayload, local, sizeof(local));
+
+        uint8_t payloadLen = (uint8_t)sizeof(local);
+
+        if (g_device_count > 1) {
+            size_t want = 8u * (size_t)(g_device_count - 1);
+            size_t maxDown = sizeof(downstreamPayload);
+
+            if (want > maxDown) {
+                SEGGER_RTT_printf(0, "Downstream payload too large: want=%u max=%u\n",
+                                  (unsigned)want, (unsigned)maxDown);
+            } else {
+                if (readDeviceData(downstreamPayload, want)) {
+                    memcpy((void *)&g_readyPayload[8], downstreamPayload, want);
+                    payloadLen = (uint8_t)(payloadLen + (uint8_t)want);
+                } else {
+                    /* Don't advertise bytes we failed to fetch. */
+                    memset((void *)&g_readyPayload[8], 0, want);
+                }
+            }
+        }
+
+        g_regReady = payloadLen;
+        g_readyPayloadLen = payloadLen;
+
+    }
+}
+
 /*****************************************/
 /*
  *  ======== mainThread ========
@@ -168,7 +237,7 @@ void *mainThread(void *arg0)
     /* Open I2CTarget driver */
     I2CTarget_Params_init(&i2cParams);
     i2cParams.eventCallbackFxn = i2cTargetCallback;
-    i2cParams.targetAddress    = TGT_ADDRESS;
+    i2cParams.targetAddress    = HDD_I2C_TARGET_ADDRESS;
     i2cHandle = I2CTarget_open(CONFIG_I2C_TARGET_0, &i2cParams);
     if (i2cHandle == NULL) {
         SEGGER_RTT_printf(0, "Error Initializing I2CTarget\n");
@@ -233,8 +302,11 @@ static int_fast16_t i2cTargetCallback(
     }
 
     if (event == I2CTarget_Event_STOP) {
-        /* If the controller just finished reading Data(0x82), clear Mode/Ready
-         * so the next controller cycle can re-trigger and re-read fresh data.
+        /* If the controller just finished a *valid* read of Data(0x82), clear
+         * Mode/Ready so the next controller cycle must re-trigger.
+         *
+         * Note: we intentionally do NOT clear state for spurious/early reads of
+         * 0x82 when no payload is ready yet.
          */
         if (g_data82ReadInProgress) {
             g_data82ReadInProgress = false;
@@ -265,6 +337,18 @@ static int cmdHandler(I2CTarget_Handle handle, uint8_t *data)
         cmd.argIdx    = 0;
         cmd.dataCount = 0;
         cmd.dataIdx   = 0;
+    }
+
+    if (cmd.id == REG_PART_ID_0x00) {
+        return cmdCtlGetPartId(handle, data);
+    }
+
+    if (cmd.id == REG_DEV_COUNT_0x02) {
+        return cmdCtlGetDevCount(handle, data);
+    }
+
+    if (cmd.id == REG_DATA_0x03) {
+        return cmdCtlGetDevData(handle, data);
     }
 
     /* --- Add: reg 0x80 handling (memory-mapped style) --- */
@@ -328,6 +412,63 @@ static int cmdCtlSetStatus(I2CTarget_Handle handle, uint8_t *data)
     }
     return 0;
 }
+
+/*
+ *  ======== cmdCtlGetDevCount ========
+ */
+static int cmdCtlGetDevCount(I2CTarget_Handle handle, uint8_t *data)
+{
+    switch (protocolState) {
+        case STATE_WAIT_FOR_CMD:
+            /* Update state. We'll send data the next time around. */
+            protocolState = STATE_PROCESS_PAYLOAD;
+            break;
+        case STATE_PROCESS_ARGS:
+            /* No command processing */
+            break;
+        case STATE_PROCESS_PAYLOAD:
+            /* Give controller the byte value it wants to read. */
+            *data         = g_device_count; /* Return the device count */
+            protocolState = STATE_CMD_DONE;
+            break;
+        case STATE_CMD_DONE:
+            /* We do not expect to get here */
+            break;
+        default:
+            break;
+    }
+
+    return 0;
+}
+
+/*
+ *  ======== cmdCtlGetPartId ========
+ */
+static int cmdCtlGetPartId(I2CTarget_Handle handle, uint8_t *data)
+{
+    switch (protocolState) {
+        case STATE_WAIT_FOR_CMD:
+            /* Update state. We'll send data the next time around. */
+            protocolState = STATE_PROCESS_PAYLOAD;
+            break;
+        case STATE_PROCESS_ARGS:
+            /* No command processing */
+            break;
+        case STATE_PROCESS_PAYLOAD:
+            /* Give controller the byte value it wants to read. */
+            *data         = g_part_id; /* Return the part ID */
+            protocolState = STATE_CMD_DONE;
+            break;
+        case STATE_CMD_DONE:
+            /* We do not expect to get here */
+            break;
+        default:
+            break;
+    }
+
+    return 0;
+}
+
 
 /*
  *  ======== cmdCtlGetStatus ========
@@ -536,6 +677,8 @@ static int regMode80Handler(I2CTarget_Handle handle, uint8_t *data)
                 if (g_regMode == 0xD1) {
                     g_regReady = 0;
                     g_readyPayloadLen = 0;
+                    g_readyPayloadReadIdx = 0;
+                    g_data82ReadInProgress = false;
                     g_pt100RequestSeq = g_latestTempSeq;
                     g_nsa2300RequestSeq = g_latestForceSeq;
 
@@ -591,52 +734,57 @@ static int regReady81Handler(I2CTarget_Handle handle, uint8_t *data)
 
         case STATE_PROCESS_PAYLOAD:
             if (g_i2cIsReadPhase) {
-                if ((g_regMode == 0xD1) &&
-                    (g_latestTempSeq != g_pt100RequestSeq) &&
-                    (g_latestForceSeq != g_nsa2300RequestSeq)) {
-                    /* Build payload once per new pair of samples */
-                    if ((g_readyPayloadTempSeq != g_latestTempSeq) ||
-                        (g_readyPayloadForceSeq != g_latestForceSeq)) {
-                        const int32_t pressure = g_latestForce_uV;
-                        const int16_t temp_x10 = g_latestTemp_x10;
-
-                        /* Current payload format is 8 bytes:
-                         * pressure(4) + temp_x10(2) + crc16_modbus(2)
-                         * Framework supports up to READY_PAYLOAD_MAX_LEN_BYTES.
-                         */
-                        const uint8_t payloadLen = 8;
-                        uint8_t local[8] = {0};
-                        /* 4 bytes pressure (little-endian) */
-                        local[0] = (uint8_t)((uint32_t)pressure & 0xFFu);
-                        local[1] = (uint8_t)(((uint32_t)pressure >> 8) & 0xFFu);
-                        local[2] = (uint8_t)(((uint32_t)pressure >> 16) & 0xFFu);
-                        local[3] = (uint8_t)(((uint32_t)pressure >> 24) & 0xFFu);
-                        /* 2 bytes temp_x10 (little-endian) */
-                        local[4] = (uint8_t)((uint16_t)temp_x10 & 0xFFu);
-                        local[5] = (uint8_t)(((uint16_t)temp_x10 >> 8) & 0xFFu);
-
-                        /* CRC16 over first 6 bytes, little-endian */
-                        uint16_t crc = crc16_modbus(local, 6);
-                        local[6] = (uint8_t)(crc & 0xFFu);
-                        local[7] = (uint8_t)((crc >> 8) & 0xFFu);
-
-                        for (size_t i = 0; i < payloadLen; i++) {
-                            g_readyPayload[i] = local[i];
-                        }
-                        g_readyPayloadLen = payloadLen;
-                        g_readyPayloadTempSeq = g_latestTempSeq;
-                        g_readyPayloadForceSeq = g_latestForceSeq;
-                    }
-
-                    g_regReady = g_readyPayloadLen;
-                    *data = g_readyPayloadLen;
-                } else {
-                    *data = g_regReady;
-                }
+                /* Return Ready */
+                *data = g_regReady;
             } else {
+                /* Update Ready with written value */
                 g_regReady = *data;
             }
             protocolState = STATE_CMD_DONE;
+            break;
+
+        default:
+            protocolState = STATE_CMD_DONE;
+            break;
+    }
+    return 0;
+}
+
+/* reg 0x03 (Payload stream) R/O:
+ * - READ : controller writes 0x03, then repeated-start READ N bytes.
+ *          Each subsequent byte clocks out the next payload byte (little-endian stream).
+ */
+static int cmdCtlGetDevData(I2CTarget_Handle handle, uint8_t *data)
+{
+    (void)handle;
+
+    switch (protocolState) {
+        case STATE_WAIT_FOR_CMD:
+            g_readyPayloadReadIdx = 0;
+            protocolState = STATE_PROCESS_PAYLOAD;
+            break;
+
+        case STATE_PROCESS_PAYLOAD:
+            if (g_i2cIsReadPhase) {
+                /* Only treat this as a real payload read when we're in the
+                 * expected mode and a non-zero payload length has been latched.
+                 * This prevents a controller probing 0x82 too early from
+                 * accidentally triggering the STOP-time clear.
+                 */
+                if (g_readyPayloadLen > 0) {
+                    if (g_readyPayloadReadIdx < g_readyPayloadLen) {
+                        *data = g_readyPayload[g_readyPayloadReadIdx++];
+                    } else {
+                        *data = 0x00;
+                    }
+                } else {
+                    *data = 0x00;
+                }
+            } else {
+                /* Ignore writes */
+            }
+            /* Keep streaming until STOP resets the state machine */
+            protocolState = STATE_PROCESS_PAYLOAD;
             break;
 
         default:
@@ -663,9 +811,18 @@ static int regData82Handler(I2CTarget_Handle handle, uint8_t *data)
 
         case STATE_PROCESS_PAYLOAD:
             if (g_i2cIsReadPhase) {
-                g_data82ReadInProgress = true;
-                if (g_readyPayloadReadIdx < g_readyPayloadLen) {
-                    *data = g_readyPayload[g_readyPayloadReadIdx++];
+                /* Only treat this as a real payload read when we're in the
+                 * expected mode and a non-zero payload length has been latched.
+                 * This prevents a controller probing 0x82 too early from
+                 * accidentally triggering the STOP-time clear.
+                 */
+                if ((g_regMode == 0xD1) && (g_readyPayloadLen > 0)) {
+                    g_data82ReadInProgress = true;
+                    if (g_readyPayloadReadIdx < g_readyPayloadLen) {
+                        *data = g_readyPayload[g_readyPayloadReadIdx++];
+                    } else {
+                        *data = 0x00;
+                    }
                 } else {
                     *data = 0x00;
                 }

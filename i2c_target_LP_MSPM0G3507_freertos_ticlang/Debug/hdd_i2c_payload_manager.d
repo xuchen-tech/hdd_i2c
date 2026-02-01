@@ -46,7 +46,13 @@ hdd_i2c_payload_manager.o: ../hdd_i2c_payload_manager.c \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/hw_debugss.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/hw_sysctl.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/sysctl/hw_sysctl_mspm0g1x0x_g3x0x.h \
- C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/HwiP.h
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/HwiP.h \
+ ../i2ctargetApp.h ../hdd_i2c_utils.h \
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/unistd.h \
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/sys/types.h \
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/sys/_internal.h \
+ C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h \
+ C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h
 ../hdd_i2c_payload_manager.h:
 ../pt100.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/ADC.h:
@@ -95,3 +101,10 @@ C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/hw_debugss.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/hw_sysctl.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/peripherals/m0p/sysctl/hw_sysctl_mspm0g1x0x_g3x0x.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/HwiP.h:
+../i2ctargetApp.h:
+../hdd_i2c_utils.h:
+C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/unistd.h:
+C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/sys/types.h:
+C:/ti/mspm0_sdk_2_09_00_01/source/ti/posix/ticlang/sys/_internal.h:
+C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h:
+C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h:

@@ -53,9 +53,9 @@ i2ctargetApp.o: ../i2ctargetApp.c \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/dl_common.h \
  C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h \
  C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h \
- ../hdd_i2c_config.h ../nas2300.h \
- C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h ../pt100.h \
- C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/ADC.h \
+ ../hdd_i2c_config.h ../hdd_i2c_payload_manager.h ../pt100.h \
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/ADC.h ../nas2300.h \
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h ../i2ctargetApp.h \
  ../ti_drivers_config.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/dl_gpio.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/driverlib.h \
@@ -166,10 +166,12 @@ C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/dl_common.h:
 C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h:
 C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h:
 ../hdd_i2c_config.h:
-../nas2300.h:
-C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h:
+../hdd_i2c_payload_manager.h:
 ../pt100.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/ADC.h:
+../nas2300.h:
+C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h:
+../i2ctargetApp.h:
 ../ti_drivers_config.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/dl_gpio.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/driverlib.h:

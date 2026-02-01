@@ -60,7 +60,8 @@ extern void *pt100Thread(void *arg0);
 extern void *payloadManagerThread(void *arg0);
 
 /* Stack size in bytes */
-#define THREADSTACKSIZE configMINIMAL_STACK_SIZE * 4
+#define MAIN_THREADSTACKSIZE    (configMINIMAL_STACK_SIZE * 4)
+#define PAYLOAD_THREADSTACKSIZE (configMINIMAL_STACK_SIZE * 8)
 
 /* Set up the hardware ready to run this demo */
 static void prvSetupHardware(void);
@@ -69,9 +70,11 @@ static void prvSetupHardware(void);
  */
 int main(void)
 {
-    pthread_t thread, i2c_contoller_thread, pt100_thread;
-    pthread_attr_t attrs;
-    struct sched_param priParam;
+    pthread_t threadPayload, threadMain, i2c_contoller_thread, pt100_thread;
+    pthread_attr_t attrsPayload;
+    pthread_attr_t attrsMain;
+    struct sched_param priPayload;
+    struct sched_param priMain;
     int retc;
 
     /* Initialize the system locks */
@@ -90,28 +93,38 @@ int main(void)
 
     SEGGER_RTT_printf(0, "Starting the segger rtt logger\n");
 
-    /* Initialize the attributes structure with default values */
-    pthread_attr_init(&attrs);
-
-    /* Set priority, detach state, and stack size attributes */
-    priParam.sched_priority = 1;
-    retc                    = pthread_attr_setschedparam(&attrs, &priParam);
-    retc |= pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    retc |= pthread_attr_setstacksize(&attrs, THREADSTACKSIZE);
+    /* payloadManagerThread: lower priority, larger stack */
+    pthread_attr_init(&attrsPayload);
+    priPayload.sched_priority = 1;
+    retc  = pthread_attr_setschedparam(&attrsPayload, &priPayload);
+    retc |= pthread_attr_setdetachstate(&attrsPayload, PTHREAD_CREATE_DETACHED);
+    retc |= pthread_attr_setstacksize(&attrsPayload, PAYLOAD_THREADSTACKSIZE);
     if (retc != 0) {
         /* failed to set attributes */
         while (1) {
         }
     }
 
-    retc = pthread_create(&thread, &attrs, payloadManagerThread, NULL);
+    retc = pthread_create(&threadPayload, &attrsPayload, payloadManagerThread, NULL);
     if (retc != 0) {
         /* pthread_create() failed */
         while (1) {
         }
     }
 
-    retc = pthread_create(&thread, &attrs, mainThread, NULL);
+    /* mainThread: higher priority, normal stack */
+    pthread_attr_init(&attrsMain);
+    priMain.sched_priority = 2;
+    retc  = pthread_attr_setschedparam(&attrsMain, &priMain);
+    retc |= pthread_attr_setdetachstate(&attrsMain, PTHREAD_CREATE_DETACHED);
+    retc |= pthread_attr_setstacksize(&attrsMain, MAIN_THREADSTACKSIZE);
+    if (retc != 0) {
+        /* failed to set attributes */
+        while (1) {
+        }
+    }
+
+    retc = pthread_create(&threadMain, &attrsMain, mainThread, NULL);
     if (retc != 0) {
         /* pthread_create() failed */
         while (1) {

@@ -12,8 +12,8 @@
 /* Driver configuration */
 #include "ti_drivers_config.h"
 
-uint8_t txBuffer[BUFFER_SIZE];
-uint8_t rxBuffer[BUFFER_SIZE];
+static uint8_t txBuffer[BUFFER_SIZE];
+static uint8_t rxBuffer[BUFFER_SIZE];
 
 static I2C_Handle g_i2cHandle;
 static I2C_Params g_i2cParams;
@@ -65,6 +65,7 @@ bool nsa2300Init() {
     SEGGER_RTT_printf(0, "NSA2300: Error initializing I2C\n");
     return false;
   }
+  usleep(100000);   /* 100ms power-up delay */
   if (nsa2300WriteReg8(txBuffer, sizeof(txBuffer), NSA2300_REG_SYS_CONFIG,
                        NSA2300_REG_SYS_CONFIG_DEFAULT) == false ||
       nsa2300WriteReg8(txBuffer, sizeof(txBuffer), NSA2300_REG_P_CONFIG,
@@ -167,15 +168,25 @@ bool nsa2300StartMeasurement() {
 
 bool nsa2300WaitForDataReady() {
   uint8_t status = 0;
+  const uint32_t maxPolls = 1000u; /* ~1s at 1ms per poll */
+  const useconds_t pollDelayUs = 1000u;
 
-  if (nsa2300ReadReg8(txBuffer, sizeof(txBuffer), rxBuffer, sizeof(rxBuffer),
-                      NSA2300_REG_STATUS, &status) == false) {
-    return false;
+  for (uint32_t poll = 0; poll < maxPolls; poll++) {
+    if (nsa2300ReadReg8(txBuffer, sizeof(txBuffer), rxBuffer, sizeof(rxBuffer),
+                        NSA2300_REG_STATUS, &status) == false) {
+        /* Read failed; treat as transient and retry. */
+      usleep(pollDelayUs);
+      continue;
+    }
+    SEGGER_RTT_printf(0, "NSA2300: STATUS=0x%02x\n", (unsigned)status);
+    if ((status & NSA2300_STATUS_DRDY_MASK) != 0) {
+        return true;
+    }
+    usleep(pollDelayUs);
   }
-  SEGGER_RTT_printf(0, "NSA2300: STATUS=0x%02x\n", (unsigned)status);
-  if ((status & NSA2300_STATUS_DRDY_MASK) != 0) {
-    return false;
-  }
+
+  SEGGER_RTT_printf(0, "NSA2300: DRDY timeout, last STATUS=0x%02x\n",
+                    (unsigned)status);
   return false;
 }
 

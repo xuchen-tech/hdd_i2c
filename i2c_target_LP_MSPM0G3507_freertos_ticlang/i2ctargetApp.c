@@ -51,6 +51,7 @@
 #include <ti/segger/SEGGER_RTT.h>
 
 #include "hdd_i2c_config.h"
+#include "hdd_i2c_payload_manager.h"
 #include "nas2300.h"
 #include "pt100.h"
 
@@ -86,10 +87,10 @@ typedef struct {
 } Command;
 
 /* Local variables */
-uint8_t rxBuffer[BUFFER_SIZE];
-uint8_t txBuffer[BUFFER_SIZE];
-ProtocolState protocolState;
-Command cmd;
+static uint8_t rxBuffer[BUFFER_SIZE];
+static uint8_t txBuffer[BUFFER_SIZE];
+static ProtocolState protocolState;
+static Command cmd;
 
 /* Function prototypes */
 static int_fast16_t i2cTargetCallback(I2CTarget_Handle handle,
@@ -109,7 +110,13 @@ static int regData82Handler(I2CTarget_Handle handle, uint8_t* data,
 
 static void i2cErrorHandler(I2C_Transaction* transaction);
 
-/*****************************************/
+void updateReady(uint8_t ready) { g_regReady = ready; }
+void updatePayloadData(uint8_t* data, uint8_t len) {
+  if (len > READY_PAYLOAD_MAX_LEN_BYTES) {
+    len = READY_PAYLOAD_MAX_LEN_BYTES;
+  }
+  memcpy((void*)g_readyPayload, (const void*)data, len);
+}
 /*
  *  ======== mainThread ========
  */
@@ -295,7 +302,13 @@ static int regMode80Handler(I2CTarget_Handle handle, uint8_t* data,
         SEGGER_RTT_printf(0,
                           "regMode80Handler: processing payload, data=0x%02x\n",
                           (unsigned)(*data));
+        const uint8_t prevMode = g_regMode;
         g_regMode = *data;
+
+        if ((prevMode != g_regMode) &&
+            (g_regMode == (uint8_t)HDD_I2C_MODE_D1)) {
+          PayloadManager_requestSampleFromISR();
+        }
       }
       protocolState = STATE_CMD_DONE;
       break;
@@ -326,57 +339,18 @@ static int regReady81Handler(I2CTarget_Handle handle, uint8_t* data,
       break;
 
     case STATE_PROCESS_PAYLOAD:
-      // if (g_i2cIsReadPhase) {
-      //     if ((g_regMode == 0xD1) &&
-      //         (g_latestTempSeq != g_pt100RequestSeq) &&
-      //         (g_latestForceSeq != g_nsa2300RequestSeq)) {
-      //         /* Build payload once per new pair of samples */
-      //         if ((g_readyPayloadTempSeq != g_latestTempSeq) ||
-      //             (g_readyPayloadForceSeq != g_latestForceSeq)) {
-      //             /* Use raw NSA2300 24-bit pressure value (p24) directly
-      //              * in the payload. g_latestForce_p24 holds the low 24 bits
-      //              * of the sensor reading (MSB..LSB), so pack them
-      //              * little-endian into the first 3 bytes and zero-extend
-      //              * the MSB for simplicity.
-      //              */
-      //             const uint32_t pressure_p24 = (uint32_t)g_latestForce_p24;
-      //             const int16_t temp_x10 = g_latestTemp_x10;
-
-      //             /* Current payload format is 8 bytes:
-      //              * pressure(4) + temp_x10(2) + crc16_modbus(2)
-      //              */
-      //             const uint8_t payloadLen = 8;
-      //             uint8_t local[8] = {0};
-      //             /* 4 bytes pressure (little-endian) - low 24 bits valid */
-      //             local[0] = (uint8_t)((pressure_p24) & 0xFFu);
-      //             local[1] = (uint8_t)(((pressure_p24) >> 8) & 0xFFu);
-      //             local[2] = (uint8_t)(((pressure_p24) >> 16) & 0xFFu);
-      //             local[3] = (uint8_t)(((pressure_p24) >> 24) & 0xFFu);
-      //             /* 2 bytes temp_x10 (little-endian) */
-      //             local[4] = (uint8_t)((uint16_t)temp_x10 & 0xFFu);
-      //             local[5] = (uint8_t)(((uint16_t)temp_x10 >> 8) & 0xFFu);
-
-      //             /* CRC16 over first 6 bytes, little-endian */
-      //             uint16_t crc = crc16_modbus(local, 6);
-      //             local[6] = (uint8_t)(crc & 0xFFu);
-      //             local[7] = (uint8_t)((crc >> 8) & 0xFFu);
-
-      //             for (size_t i = 0; i < payloadLen; i++) {
-      //                 g_readyPayload[i] = local[i];
-      //             }
-      //             g_readyPayloadLen = payloadLen;
-      //             g_readyPayloadTempSeq = g_latestTempSeq;
-      //             g_readyPayloadForceSeq = g_latestForceSeq;
-      //         }
-
-      //         g_regReady = g_readyPayloadLen;
-      //         *data = g_readyPayloadLen;
-      //     } else {
-      //         *data = g_regReady;
-      //     }
-      // } else {
-      //     g_regReady = *data;
-      // }
+      if (direction == HDD_I2C_DIRECTION_READ) {
+        /* Return Ready */
+        *data = g_regReady;
+      } else {
+        SEGGER_RTT_printf(
+            0, "regReady81Handler: processing payload, data=0x%02x\n",
+            (unsigned)(*data));
+        g_regReady = *data;
+        if (g_regReady == 0) {
+          g_regMode = HDD_I2C_MODE_IDLE;
+        }
+      }
       protocolState = STATE_CMD_DONE;
       break;
 
@@ -402,17 +376,14 @@ static int regData82Handler(I2CTarget_Handle handle, uint8_t* data,
       break;
 
     case STATE_PROCESS_PAYLOAD:
-      // if (g_i2cIsReadPhase) {
-      //     g_data82ReadInProgress = true;
-      //     if (g_readyPayloadReadIdx < g_readyPayloadLen) {
-      //         *data = g_readyPayload[g_readyPayloadReadIdx++];
-      //     } else {
-      //         *data = 0x00;
-      //     }
-      // } else {
-      //     /* Ignore writes */
-      // }
-      /* Keep streaming until STOP resets the state machine */
+      if (direction == HDD_I2C_DIRECTION_READ) {
+        /* Return next payload byte */
+        *data = g_readyPayload[cmd.dataIdx];
+        cmd.dataIdx++;
+        if (cmd.dataIdx >= READY_PAYLOAD_MAX_LEN_BYTES) {
+          cmd.dataIdx = READY_PAYLOAD_MAX_LEN_BYTES - 1;
+        }
+      }
       protocolState = STATE_PROCESS_PAYLOAD;
       break;
 

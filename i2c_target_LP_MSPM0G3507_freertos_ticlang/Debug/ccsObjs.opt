@@ -1,5 +1,5 @@
 "./hdd_i2c_payload_manager.o"
-"./i2ccontroller.o"
+"./hdd_i2c_utils.o"
 "./i2ctargetApp.o"
 "./main_freertos.o"
 "./nas2300.o"

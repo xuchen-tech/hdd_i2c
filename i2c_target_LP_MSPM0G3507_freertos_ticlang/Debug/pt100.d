@@ -13,7 +13,10 @@ pt100.o: ../pt100.c ../pt100.h \
  C:/ti/mspm0_sdk_2_09_00_01/kernel/freertos/Source/include/mpu_wrappers.h \
  C:/ti/mspm0_sdk_2_09_00_01/kernel/freertos/Source/include/task.h \
  C:/ti/mspm0_sdk_2_09_00_01/kernel/freertos/Source/include/list.h \
- ../hdd_i2c_config.h ../ti_drivers_config.h \
+ ../hdd_i2c_config.h \
+ C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h \
+ C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h \
+ ../ti_drivers_config.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/DeviceFamily.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/msp.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/m0p/mspm0g350x.h \
@@ -104,9 +107,7 @@ pt100.o: ../pt100.c ../pt100.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/uart/UARTSupportMSPM0.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/ClockP.h \
  C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/utils/RingBuf.h \
- C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h \
- C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h \
- C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h
+ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h
 ../pt100.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/ADC.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/SemaphoreP.h:
@@ -121,6 +122,8 @@ C:/ti/mspm0_sdk_2_09_00_01/kernel/freertos/Source/include/mpu_wrappers.h:
 C:/ti/mspm0_sdk_2_09_00_01/kernel/freertos/Source/include/task.h:
 C:/ti/mspm0_sdk_2_09_00_01/kernel/freertos/Source/include/list.h:
 ../hdd_i2c_config.h:
+C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h:
+C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h:
 ../ti_drivers_config.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/DeviceFamily.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/devices/msp/msp.h:
@@ -213,5 +216,3 @@ C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/uart/UARTSupportMSPM0.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/dpl/ClockP.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/utils/RingBuf.h:
 C:/ti/mspm0_sdk_2_09_00_01/source/ti/drivers/I2C.h:
-C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT.h:
-C:/Users/hugh-/workspace_ccstheia/i2c_target_LP_MSPM0G3507_freertos_ticlang/ti/segger/SEGGER_RTT_Conf.h:

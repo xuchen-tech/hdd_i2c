@@ -104,14 +104,7 @@ int main(void)
         }
     }
 
-    retc = pthread_create(&pt100_thread, &attrs, pt100Thread, NULL);
-    if (retc != 0) {
-        /* pthread_create() failed */
-        while (1) {
-        }
-    }
-
-    retc = pthread_create(&i2c_contoller_thread, &attrs, i2cControllerThread, NULL);
+    retc = pthread_create(&thread, &attrs, payloadManagerThread, NULL);
     if (retc != 0) {
         /* pthread_create() failed */
         while (1) {
@@ -124,14 +117,6 @@ int main(void)
         while (1) {
         }
     }
-
-    retc = pthread_create(&thread, &attrs, payloadManagerThread, NULL);
-    if (retc != 0) {
-        /* pthread_create() failed */
-        while (1) {
-        }
-    }
-
     /* Start the FreeRTOS scheduler */
     vTaskStartScheduler();
 

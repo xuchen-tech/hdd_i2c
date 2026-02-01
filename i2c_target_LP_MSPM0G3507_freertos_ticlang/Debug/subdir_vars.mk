@@ -10,7 +10,7 @@ CMD_SRCS += \
 
 C_SRCS += \
 ../hdd_i2c_payload_manager.c \
-../i2ccontroller.c \
+../hdd_i2c_utils.c \
 ../i2ctargetApp.c \
 ../main_freertos.c \
 ../nas2300.c \
@@ -20,7 +20,7 @@ C_SRCS += \
 
 C_DEPS += \
 ./hdd_i2c_payload_manager.d \
-./i2ccontroller.d \
+./hdd_i2c_utils.d \
 ./i2ctargetApp.d \
 ./main_freertos.d \
 ./nas2300.d \
@@ -30,7 +30,7 @@ C_DEPS += \
 
 OBJS += \
 ./hdd_i2c_payload_manager.o \
-./i2ccontroller.o \
+./hdd_i2c_utils.o \
 ./i2ctargetApp.o \
 ./main_freertos.o \
 ./nas2300.o \
@@ -40,7 +40,7 @@ OBJS += \
 
 OBJS__QUOTED += \
 "hdd_i2c_payload_manager.o" \
-"i2ccontroller.o" \
+"hdd_i2c_utils.o" \
 "i2ctargetApp.o" \
 "main_freertos.o" \
 "nas2300.o" \
@@ -50,7 +50,7 @@ OBJS__QUOTED += \
 
 C_DEPS__QUOTED += \
 "hdd_i2c_payload_manager.d" \
-"i2ccontroller.d" \
+"hdd_i2c_utils.d" \
 "i2ctargetApp.d" \
 "main_freertos.d" \
 "nas2300.d" \
@@ -60,7 +60,7 @@ C_DEPS__QUOTED += \
 
 C_SRCS__QUOTED += \
 "../hdd_i2c_payload_manager.c" \
-"../i2ccontroller.c" \
+"../hdd_i2c_utils.c" \
 "../i2ctargetApp.c" \
 "../main_freertos.c" \
 "../nas2300.c" \

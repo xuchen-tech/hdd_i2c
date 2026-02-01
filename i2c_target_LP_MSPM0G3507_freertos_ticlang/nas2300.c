@@ -2,307 +2,191 @@
 
 #include <string.h>
 /* For usleep() */
+#include <ti/drivers/GPIO.h>
+#include <ti/drivers/I2C.h>
+#include <ti/segger/SEGGER_RTT.h>
 #include <unistd.h>
 
-/* NSA2300 (user model) register map per user notes */
-#define NAS2300_REG_STATUS   0x02
-#define NAS2300_REG_P_MSB    0x06
-#define NAS2300_REG_CMD      0x30
+#include "hdd_i2c_config.h"
 
-#define NAS2300_REG_P_CFG0   0xA5
-#define NAS2300_REG_P_CFG1   0xA6
-#define NAS2300_REG_P_CFG2   0xA7
+/* Driver configuration */
+#include "ti_drivers_config.h"
 
-/* CMD: pressure channel, single conversion */
-#define NAS2300_CMD_SINGLE_PRESSURE_CONVERSION 0x09
+uint8_t txBuffer[BUFFER_SIZE];
+uint8_t rxBuffer[BUFFER_SIZE];
 
-/* DRDY mask in STATUS (user note: bit0) */
-#define NAS2300_STATUS_DRDY_MASK 0x01
+static I2C_Handle g_i2cHandle;
+static I2C_Params g_i2cParams;
 
-volatile int32_t g_latestForce_uV = 0;
-volatile uint32_t g_latestForceSeq = 0;
-/* Raw 24-bit pressure value (packed into low 24 bits). */
-volatile uint32_t g_latestForce_p24 = 0;
-
-void NAS2300_Config_init(NAS2300_Config *cfg)
-{
-    if (cfg == NULL) {
-        return;
-    }
-
-    cfg->i2cAddr = 0x6D;
-
-    /* User-provided init values */
-    cfg->p_cfg0_value = 0x12;
-    cfg->p_cfg1_value = 0x31;
-    cfg->p_cfg2_value = 0x81;
-
-    cfg->fs_uV = 0;
-    cfg->dataFormat = NAS2300_DataFormat_OffsetBinary;
+static void i2cErrorHandler(I2C_Transaction* transaction) {
+  switch (transaction->status) {
+    case I2C_STATUS_TIMEOUT:
+      SEGGER_RTT_printf(0, "I2C transaction timed out!\n");
+      break;
+    case I2C_STATUS_CLOCK_TIMEOUT:
+      SEGGER_RTT_printf(0, "I2C serial clock line timed out!\n");
+      break;
+    case I2C_STATUS_ADDR_NACK:
+      SEGGER_RTT_printf(0, "I2C target address 0x%x not acknowledged!\n",
+                        transaction->targetAddress);
+      break;
+    case I2C_STATUS_DATA_NACK:
+      SEGGER_RTT_printf(0, "I2C data byte not acknowledged!\n");
+      break;
+    case I2C_STATUS_ARB_LOST:
+      SEGGER_RTT_printf(0, "I2C arbitration to another controller!\n");
+      break;
+    case I2C_STATUS_INCOMPLETE:
+      SEGGER_RTT_printf(0, "I2C transaction returned before completion!\n");
+      break;
+    case I2C_STATUS_BUS_BUSY:
+      SEGGER_RTT_printf(0, "I2C bus is already in use!\n");
+      break;
+    case I2C_STATUS_CANCEL:
+      SEGGER_RTT_printf(0, "I2C transaction cancelled!\n");
+      break;
+    case I2C_STATUS_INVALID_TRANS:
+      SEGGER_RTT_printf(0, "I2C transaction invalid!\n");
+      break;
+    case I2C_STATUS_ERROR:
+      SEGGER_RTT_printf(0, "I2C generic error!\n");
+      break;
+    default:
+      SEGGER_RTT_printf(0, "I2C undefined error case!\n");
+      break;
+  }
 }
 
-bool NAS2300_writeReg8(I2C_Handle i2cHandle,
-                       I2C_Transaction *transaction,
-                       uint8_t *txBuf,
-                       size_t txBufSize,
-                       uint8_t reg,
-                       uint8_t value)
-{
-    if (i2cHandle == NULL || transaction == NULL || txBuf == NULL) {
-        return false;
-    }
-    if (txBufSize < 2) {
-        return false;
-    }
-
-    txBuf[0] = reg;
-    txBuf[1] = value;
-    transaction->writeBuf = txBuf;
-    transaction->writeCount = 2;
-    transaction->readCount = 0;
-
-    return I2C_transfer(i2cHandle, transaction);
-}
-
-bool NAS2300_readReg8(I2C_Handle i2cHandle,
-                      I2C_Transaction *transaction,
-                      uint8_t *txBuf,
-                      size_t txBufSize,
-                      uint8_t *rxBuf,
-                      size_t rxBufSize,
-                      uint8_t reg,
-                      uint8_t *value)
-{
-    if (i2cHandle == NULL || transaction == NULL || txBuf == NULL || rxBuf == NULL || value == NULL) {
-        return false;
-    }
-    if (txBufSize < 1 || rxBufSize < 1) {
-        return false;
-    }
-
-    txBuf[0] = reg;
-    transaction->writeBuf = txBuf;
-    transaction->writeCount = 1;
-    transaction->readBuf = rxBuf;
-    transaction->readCount = 1;
-
-    if (!I2C_transfer(i2cHandle, transaction)) {
-        return false;
-    }
-
-    *value = rxBuf[0];
-    return true;
-}
-
-bool NAS2300_readRegN(I2C_Handle i2cHandle,
-                      I2C_Transaction *transaction,
-                      uint8_t *txBuf,
-                      size_t txBufSize,
-                      uint8_t *rxBuf,
-                      size_t rxBufSize,
-                      uint8_t startReg,
-                      uint8_t *out,
-                      size_t outLen)
-{
-    if (i2cHandle == NULL || transaction == NULL || txBuf == NULL || rxBuf == NULL || out == NULL) {
-        return false;
-    }
-    if (txBufSize < 1 || outLen == 0 || outLen > rxBufSize) {
-        return false;
-    }
-
-    txBuf[0] = startReg;
-    transaction->writeBuf = txBuf;
-    transaction->writeCount = 1;
-    transaction->readBuf = rxBuf;
-    transaction->readCount = (uint16_t)outLen;
-
-    if (!I2C_transfer(i2cHandle, transaction)) {
-        return false;
-    }
-
-    memcpy(out, rxBuf, outLen);
-    return true;
-}
-
-bool NAS2300_init(I2C_Handle i2cHandle,
-                  I2C_Transaction *transaction,
-                  uint8_t *txBuf,
-                  size_t txBufSize,
-                  uint8_t *rxBuf,
-                  size_t rxBufSize,
-                  const NAS2300_Config *cfg)
-{
-    if (cfg == NULL) {
-        return false;
-    }
-
-    transaction->targetAddress = cfg->i2cAddr;
-
-    uint8_t rb0 = 0, rb1 = 0, rb2 = 0;
-
-    if (!NAS2300_writeReg8(i2cHandle, transaction, txBuf, txBufSize, NAS2300_REG_P_CFG0, cfg->p_cfg0_value) ||
-        !NAS2300_writeReg8(i2cHandle, transaction, txBuf, txBufSize, NAS2300_REG_P_CFG1, cfg->p_cfg1_value) ||
-        !NAS2300_writeReg8(i2cHandle, transaction, txBuf, txBufSize, NAS2300_REG_P_CFG2, cfg->p_cfg2_value)) {
-        return false;
-    }
-
-    if (!NAS2300_readReg8(i2cHandle, transaction, txBuf, txBufSize, rxBuf, rxBufSize, NAS2300_REG_P_CFG0, &rb0) ||
-        !NAS2300_readReg8(i2cHandle, transaction, txBuf, txBufSize, rxBuf, rxBufSize, NAS2300_REG_P_CFG1, &rb1) ||
-        !NAS2300_readReg8(i2cHandle, transaction, txBuf, txBufSize, rxBuf, rxBufSize, NAS2300_REG_P_CFG2, &rb2)) {
-        return false;
-    }
-
-    return (rb0 == cfg->p_cfg0_value) && (rb1 == cfg->p_cfg1_value) && (rb2 == cfg->p_cfg2_value);
-}
-
-bool NAS2300_startSinglePressureConversion(I2C_Handle i2cHandle,
-                                          I2C_Transaction *transaction,
-                                          uint8_t *txBuf,
-                                          size_t txBufSize,
-                                          uint8_t *rxBuf,
-                                          size_t rxBufSize,
-                                          const NAS2300_Config *cfg,
-                                          uint8_t *cmdReadback)
-{
-    if (cfg == NULL) {
-        return false;
-    }
-
-    transaction->targetAddress = cfg->i2cAddr;
-
-    if (!NAS2300_writeReg8(i2cHandle, transaction, txBuf, txBufSize, NAS2300_REG_CMD, NAS2300_CMD_SINGLE_PRESSURE_CONVERSION)) {
-        return false;
-    }
-
-    if (cmdReadback) {
-        uint8_t rb = 0;
-        if (!NAS2300_readReg8(i2cHandle, transaction, txBuf, txBufSize, rxBuf, rxBufSize, NAS2300_REG_CMD, &rb)) {
-            return false;
-        }
-        *cmdReadback = rb;
-    }
-
-    return true;
-}
-
-bool NAS2300_waitDrdy(I2C_Handle i2cHandle,
-                      I2C_Transaction *transaction,
-                      uint8_t *txBuf,
-                      size_t txBufSize,
-                      uint8_t *rxBuf,
-                      size_t rxBufSize,
-                      const NAS2300_Config *cfg,
-                      uint32_t maxPolls,
-                      uint32_t pollDelayUs,
-                      uint8_t *finalStatus)
-{
-    if (cfg == NULL) {
-        return false;
-    }
-
-    transaction->targetAddress = cfg->i2cAddr;
-
-    uint8_t status = 0;
-    for (uint32_t polls = 0; polls < maxPolls; polls++) {
-        if (!NAS2300_readReg8(i2cHandle, transaction, txBuf, txBufSize, rxBuf, rxBufSize, NAS2300_REG_STATUS, &status)) {
-            return false;
-        }
-
-        if ((status & NAS2300_STATUS_DRDY_MASK) != 0) {
-            if (finalStatus) {
-                *finalStatus = status;
-            }
-            return true;
-        }
-
-        if (pollDelayUs != 0) {
-            usleep(pollDelayUs);
-        }
-    }
-
-    if (finalStatus) {
-        *finalStatus = status;
-    }
+bool nsa2300Init() {
+  I2C_Params_init(&g_i2cParams);
+  g_i2cParams.bitRate = I2C_400kHz;
+  g_i2cHandle = I2C_open(CONFIG_I2C_0, &g_i2cParams);
+  if (g_i2cHandle == NULL) {
+    SEGGER_RTT_printf(0, "NSA2300: Error initializing I2C\n");
     return false;
+  }
+  if (nsa2300WriteReg8(txBuffer, sizeof(txBuffer), NSA2300_REG_SYS_CONFIG,
+                       NSA2300_REG_SYS_CONFIG_DEFAULT) == false ||
+      nsa2300WriteReg8(txBuffer, sizeof(txBuffer), NSA2300_REG_P_CONFIG,
+                       NSA2300_REG_P_CONFIG_DEFAULT) == false) {
+    SEGGER_RTT_printf(0, "NSA2300: Error writing config registers\n");
+    I2C_close(g_i2cHandle);
+    g_i2cHandle = NULL;
+    return false;
+  }
+
+  SEGGER_RTT_printf(0, "NSA2300: I2C initialized successfully\n");
+  return true;
 }
 
-bool NAS2300_readPressureRaw24_burst(I2C_Handle i2cHandle,
-                                    I2C_Transaction *transaction,
-                                    uint8_t *txBuf,
-                                    size_t txBufSize,
-                                    uint8_t *rxBuf,
-                                    size_t rxBufSize,
-                                    const NAS2300_Config *cfg,
-                                    uint32_t *p24)
-{
-    if (cfg == NULL || p24 == NULL) {
-        return false;
-    }
-
-    transaction->targetAddress = cfg->i2cAddr;
-
-    uint8_t bytes[3] = {0};
-    if (!NAS2300_readRegN(i2cHandle, transaction, txBuf, txBufSize, rxBuf, rxBufSize, NAS2300_REG_P_MSB, bytes, sizeof(bytes))) {
-        return false;
-    }
-
-    *p24 = ((uint32_t)bytes[0] << 16) | ((uint32_t)bytes[1] << 8) | (uint32_t)bytes[2];
-    return true;
+bool nas2300Deinit() {
+  if (g_i2cHandle != NULL) {
+    I2C_close(g_i2cHandle);
+    g_i2cHandle = NULL;
+  }
+  return true;
 }
 
-bool NAS2300_readPressureRaw24_single(I2C_Handle i2cHandle,
-                                     I2C_Transaction *transaction,
-                                     uint8_t *txBuf,
-                                     size_t txBufSize,
-                                     uint8_t *rxBuf,
-                                     size_t rxBufSize,
-                                     const NAS2300_Config *cfg,
-                                     uint32_t *p24)
-{
-    if (cfg == NULL || p24 == NULL) {
-        return false;
-    }
+bool nsa2300WriteReg8(uint8_t* txBuf, size_t txBufSize, uint8_t reg,
+                      uint8_t value) {
+  I2C_Transaction i2cTransaction;
+  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 2) {
+    SEGGER_RTT_printf(0, "1 - NSA2300: I2C not initialized\n");
+    return false;
+  }
+  txBuf[0] = reg;
+  txBuf[1] = value;
 
-    transaction->targetAddress = cfg->i2cAddr;
+  /* Common I2C transaction setup */
+  i2cTransaction.writeBuf = txBuf;
+  i2cTransaction.writeCount = 2;
+  i2cTransaction.readBuf = rxBuffer;
+  i2cTransaction.readCount = 0;
+  i2cTransaction.targetAddress = NAS2300_I2C_ADDRESS;
 
-    uint8_t b0 = 0, b1 = 0, b2 = 0;
-    if (!NAS2300_readReg8(i2cHandle, transaction, txBuf, txBufSize, rxBuf, rxBufSize, NAS2300_REG_P_MSB, &b0) ||
-        !NAS2300_readReg8(i2cHandle, transaction, txBuf, txBufSize, rxBuf, rxBufSize, (uint8_t)(NAS2300_REG_P_MSB + 1), &b1) ||
-        !NAS2300_readReg8(i2cHandle, transaction, txBuf, txBufSize, rxBuf, rxBufSize, (uint8_t)(NAS2300_REG_P_MSB + 2), &b2)) {
-        return false;
-    }
-
-    *p24 = ((uint32_t)b0 << 16) | ((uint32_t)b1 << 8) | (uint32_t)b2;
-    return true;
+  return I2C_transfer(g_i2cHandle, &i2cTransaction);
 }
 
-int32_t NAS2300_decode_code24(uint32_t u24, NAS2300_DataFormat fmt)
-{
-    if (fmt == NAS2300_DataFormat_TwosComplement) {
-        return (u24 & 0x800000u) ? (int32_t)(u24 | 0xFF000000u) : (int32_t)u24;
-    }
+bool nsa2300ReadReg8(uint8_t* txBuf, size_t txBufSize, uint8_t* rxBuf,
+                     size_t rxBufSize, uint8_t reg, uint8_t* value) {
+  I2C_Transaction i2cTransaction;
+  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
+      rxBufSize < 1 || value == NULL) {
+    return false;
+  }
+  txBuf[0] = reg;
+  i2cTransaction.writeBuf = txBuf;
+  i2cTransaction.writeCount = 1;
+  i2cTransaction.readBuf = rxBuf;
+  i2cTransaction.readCount = 1;
+  i2cTransaction.targetAddress = NAS2300_I2C_ADDRESS;
 
-    return (int32_t)u24 - 0x800000;
+  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
+    i2cErrorHandler(&i2cTransaction);
+    return false;
+  }
+  *value = rxBuf[0];
+  return true;
 }
 
-int32_t NAS2300_code24_to_uV(int32_t code24, int32_t fs_uV)
-{
-    if (fs_uV <= 0) {
-        return 0;
-    }
+bool nsa2300ReadRegN(uint8_t* txBuf, size_t txBufSize, uint8_t* rxBuf,
+                     size_t rxBufSize, uint8_t startReg, uint8_t* out,
+                     size_t outLen) {
+  I2C_Transaction i2cTransaction;
+  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
+      rxBufSize < outLen || out == NULL) {
+    return false;
+  }
+  txBuf[0] = startReg;
+  i2cTransaction.writeBuf = txBuf;
+  i2cTransaction.writeCount = 1;
+  i2cTransaction.readBuf = rxBuf;
+  i2cTransaction.readCount = (uint16_t)outLen;
+  i2cTransaction.targetAddress = NAS2300_I2C_ADDRESS;
 
-    return (int32_t)((int64_t)code24 * (int64_t)fs_uV / 8388607LL);
+  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
+    i2cErrorHandler(&i2cTransaction);
+    return false;
+  }
+
+  memcpy(out, rxBuf, outLen);
+  return true;
 }
 
-void NAS2300_publish_latest_force_uV(int32_t force_uV)
-{
-    g_latestForce_uV = force_uV;
-    g_latestForceSeq++;
+bool nsa2300StartMeasurement() {
+  uint8_t txBuffer[2];
+
+  if (g_i2cHandle == NULL) {
+    SEGGER_RTT_printf(0, "NSA2300: I2C not initialized\n");
+    return false;
+  }
+
+  return nsa2300WriteReg8(txBuffer, sizeof(txBuffer), NSA2300_REG_CMD,
+                          NSA2300_CMD_SINGLE_PRESSURE_CONVERSION);
 }
 
-void NAS2300_publish_latest_p24(uint32_t p24)
-{
-    g_latestForce_p24 = p24 & 0x00FFFFFFu;
-    g_latestForceSeq++;
+bool nsa2300WaitForDataReady() {
+  uint8_t status = 0;
+
+  if (nsa2300ReadReg8(txBuffer, sizeof(txBuffer), rxBuffer, sizeof(rxBuffer),
+                      NSA2300_REG_STATUS, &status) == false) {
+    return false;
+  }
+  SEGGER_RTT_printf(0, "NSA2300: STATUS=0x%02x\n", (unsigned)status);
+  if ((status & NSA2300_STATUS_DRDY_MASK) != 0) {
+    return false;
+  }
+  return false;
+}
+
+bool nsa2300ReadPressureRaw24Single(uint32_t* p24) {
+  uint8_t raw[3] = {0};
+
+  if (nsa2300ReadRegN(txBuffer, sizeof(txBuffer), rxBuffer, sizeof(rxBuffer),
+                      NSA2300_REG_DATA, raw, 3) == false) {
+    return false;
+  }
+
+  *p24 = ((uint32_t)raw[0] << 16) | ((uint32_t)raw[1] << 8) | (uint32_t)raw[2];
+  return true;
 }

@@ -2,6 +2,7 @@
 #define __HDD_I2C_CONFIG_H__
 
 /*  I2C Target protocol definition  */
+#define BUFFER_SIZE 128
 #define HDD_I2C_TARGET_ADDRESS 0x50
 #define REG_MODE_0x80 0x80
 #define REG_READY_0x81 0x81
@@ -43,5 +44,26 @@ typedef struct {
 #define NSA2300_REG_SYS_CONFIG 0xA5
 #define NSA2300_REG_P_CONFIG 0xA6
 #define NSA2300_REG_T_CONFIG 0xA7
+
+#define NSA2300_REG_SYS_CONFIG_DEFAULT 0x12
+#define NSA2300_REG_P_CONFIG_DEFAULT 0x31
+#define NSA2300_REG_T_CONFIG_DEFAULT 0x81
+
+#define NSA2300_CMD_SINGLE_PRESSURE_CONVERSION 0x09
+#define NSA2300_STATUS_DRDY_MASK 0x01
+
+/*  thread definition */
+#define TASKSTACKSIZE 640
+
+typedef enum {
+  HDD_I2C_MODE_IDLE = 0x00,
+  HDD_I2C_MODE_D1 = 0xD1,
+  HDD_I2C_MODE_D2 = 0xD2,
+} HDD_I2C_Mode;
+
+typedef enum {
+  HDD_I2C_DIRECTION_WRITE = 0,
+  HDD_I2C_DIRECTION_READ = 1,
+} HDD_I2C_DIRECTION;
 
 #endif /* __HDD_I2C_CONFIG_H__ */

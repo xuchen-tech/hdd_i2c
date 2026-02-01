@@ -11,7 +11,7 @@ GEN_CMDS__FLAG :=
 
 ORDERED_OBJS += \
 "./hdd_i2c_payload_manager.o" \
-"./i2ccontroller.o" \
+"./hdd_i2c_utils.o" \
 "./i2ctargetApp.o" \
 "./main_freertos.o" \
 "./nas2300.o" \
@@ -174,8 +174,8 @@ i2c_target_LP_MSPM0G3507_freertos_ticlang.hex: $(EXE_OUTPUTS)
 clean:
 	-$(RM) $(BIN_OUTPUTS__QUOTED)$(EXE_OUTPUTS__QUOTED)
 	-$(RM) "ti\segger\SEGGER_RTT_ASM_ARMv7M.d" 
-	-$(RM) "hdd_i2c_payload_manager.o" "i2ccontroller.o" "i2ctargetApp.o" "main_freertos.o" "nas2300.o" "pt100.o" "ti_drivers_config.o" "ti_msp_dl_config.o" "freertos\ticlang\startup_mspm0g350x_ticlang.o" "ti\display\Display.o" "ti\display\DisplayUart.o" "ti\segger\SEGGER_RTT.o" "ti\segger\SEGGER_RTT_ASM_ARMv7M.o" "ti\segger\SEGGER_RTT_printf.o" 
-	-$(RM) "hdd_i2c_payload_manager.d" "i2ccontroller.d" "i2ctargetApp.d" "main_freertos.d" "nas2300.d" "pt100.d" "ti_drivers_config.d" "ti_msp_dl_config.d" "freertos\ticlang\startup_mspm0g350x_ticlang.d" "ti\display\Display.d" "ti\display\DisplayUart.d" "ti\segger\SEGGER_RTT.d" "ti\segger\SEGGER_RTT_printf.d" 
+	-$(RM) "hdd_i2c_payload_manager.o" "hdd_i2c_utils.o" "i2ctargetApp.o" "main_freertos.o" "nas2300.o" "pt100.o" "ti_drivers_config.o" "ti_msp_dl_config.o" "freertos\ticlang\startup_mspm0g350x_ticlang.o" "ti\display\Display.o" "ti\display\DisplayUart.o" "ti\segger\SEGGER_RTT.o" "ti\segger\SEGGER_RTT_ASM_ARMv7M.o" "ti\segger\SEGGER_RTT_printf.o" 
+	-$(RM) "hdd_i2c_payload_manager.d" "hdd_i2c_utils.d" "i2ctargetApp.d" "main_freertos.d" "nas2300.d" "pt100.d" "ti_drivers_config.d" "ti_msp_dl_config.d" "freertos\ticlang\startup_mspm0g350x_ticlang.d" "ti\display\Display.d" "ti\display\DisplayUart.d" "ti\segger\SEGGER_RTT.d" "ti\segger\SEGGER_RTT_printf.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

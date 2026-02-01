@@ -37,6 +37,8 @@ typedef struct {
 /* Latest published force (uV) for sharing with other modules */
 extern volatile int32_t g_latestForce_uV;
 extern volatile uint32_t g_latestForceSeq;
+/* Latest raw 24-bit pressure value (MSB..LSB packed into low 24 bits) */
+extern volatile uint32_t g_latestForce_p24;
 
 void NAS2300_Config_init(NAS2300_Config *cfg);
 
@@ -122,6 +124,7 @@ int32_t NAS2300_decode_code24(uint32_t u24, NAS2300_DataFormat fmt);
 int32_t NAS2300_code24_to_uV(int32_t code24, int32_t fs_uV);
 
 void NAS2300_publish_latest_force_uV(int32_t force_uV);
+void NAS2300_publish_latest_p24(uint32_t p24);
 
 #ifdef __cplusplus
 }

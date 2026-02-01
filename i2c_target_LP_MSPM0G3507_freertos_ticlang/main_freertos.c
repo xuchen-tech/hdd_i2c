@@ -53,7 +53,6 @@
 
 #include "ti_drivers_config.h"
 #include "ti_msp_dl_config.h"
-#include "display_shared.h"
 
 extern void *mainThread(void *arg0);
 extern void *i2cControllerThread(void *arg0);

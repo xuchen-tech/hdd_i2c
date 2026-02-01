@@ -21,6 +21,8 @@
 
 volatile int32_t g_latestForce_uV = 0;
 volatile uint32_t g_latestForceSeq = 0;
+/* Raw 24-bit pressure value (packed into low 24 bits). */
+volatile uint32_t g_latestForce_p24 = 0;
 
 void NAS2300_Config_init(NAS2300_Config *cfg)
 {
@@ -296,5 +298,11 @@ int32_t NAS2300_code24_to_uV(int32_t code24, int32_t fs_uV)
 void NAS2300_publish_latest_force_uV(int32_t force_uV)
 {
     g_latestForce_uV = force_uV;
+    g_latestForceSeq++;
+}
+
+void NAS2300_publish_latest_p24(uint32_t p24)
+{
+    g_latestForce_p24 = p24 & 0x00FFFFFFu;
     g_latestForceSeq++;
 }

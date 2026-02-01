@@ -253,6 +253,8 @@ void *i2cControllerThread(void *arg0) {
                     }
 
                     NAS2300_publish_latest_force_uV(publishValue);
+                    /* Also publish raw 24-bit pressure for use in payloads */
+                    NAS2300_publish_latest_p24(p24);
                 }
 
                 if (p24 == 0 && p24Single == 0) {

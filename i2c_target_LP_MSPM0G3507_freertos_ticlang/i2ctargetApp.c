@@ -597,20 +597,25 @@ static int regReady81Handler(I2CTarget_Handle handle, uint8_t *data)
                     /* Build payload once per new pair of samples */
                     if ((g_readyPayloadTempSeq != g_latestTempSeq) ||
                         (g_readyPayloadForceSeq != g_latestForceSeq)) {
-                        const int32_t pressure = g_latestForce_uV;
+                        /* Use raw NSA2300 24-bit pressure value (p24) directly
+                         * in the payload. g_latestForce_p24 holds the low 24 bits
+                         * of the sensor reading (MSB..LSB), so pack them
+                         * little-endian into the first 3 bytes and zero-extend
+                         * the MSB for simplicity.
+                         */
+                        const uint32_t pressure_p24 = (uint32_t)g_latestForce_p24;
                         const int16_t temp_x10 = g_latestTemp_x10;
 
                         /* Current payload format is 8 bytes:
                          * pressure(4) + temp_x10(2) + crc16_modbus(2)
-                         * Framework supports up to READY_PAYLOAD_MAX_LEN_BYTES.
                          */
                         const uint8_t payloadLen = 8;
                         uint8_t local[8] = {0};
-                        /* 4 bytes pressure (little-endian) */
-                        local[0] = (uint8_t)((uint32_t)pressure & 0xFFu);
-                        local[1] = (uint8_t)(((uint32_t)pressure >> 8) & 0xFFu);
-                        local[2] = (uint8_t)(((uint32_t)pressure >> 16) & 0xFFu);
-                        local[3] = (uint8_t)(((uint32_t)pressure >> 24) & 0xFFu);
+                        /* 4 bytes pressure (little-endian) - low 24 bits valid */
+                        local[0] = (uint8_t)((pressure_p24) & 0xFFu);
+                        local[1] = (uint8_t)(((pressure_p24) >> 8) & 0xFFu);
+                        local[2] = (uint8_t)(((pressure_p24) >> 16) & 0xFFu);
+                        local[3] = (uint8_t)(((pressure_p24) >> 24) & 0xFFu);
                         /* 2 bytes temp_x10 (little-endian) */
                         local[4] = (uint8_t)((uint16_t)temp_x10 & 0xFFu);
                         local[5] = (uint8_t)(((uint16_t)temp_x10 >> 8) & 0xFFu);

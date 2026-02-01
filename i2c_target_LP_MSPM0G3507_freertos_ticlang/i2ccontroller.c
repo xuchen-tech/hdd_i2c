@@ -22,6 +22,7 @@
 /* Driver configuration */
 #include "ti_drivers_config.h"
 
+#include "hdd_i2c_config.h"
 #include "nas2300.h"
 #define BUFFER_SIZE 32
 uint8_t txBuffer[BUFFER_SIZE];
@@ -34,7 +35,7 @@ static const struct {
     uint8_t address;
     uint8_t resultReg;
     char *id;
-} sensors[TMP_COUNT] = {{0x6D, 0x01, "NSA2300"}};
+} sensors[TMP_COUNT] = {{NAS2300_I2C_ADDRESS, 0x01, "NSA2300"}};
 
 static uint8_t targetAddress;
 

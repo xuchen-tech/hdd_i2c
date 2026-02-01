@@ -37,9 +37,6 @@
 #ifndef __CMDINTERFACE_H__
 #define __CMDINTERFACE_H__
 
-/*! Address of the I2C Target device */
-#define TGT_ADDRESS 0x50
-
 /*! Command: GET_STATUS command from controller.
  * Bytes written (controller to target)
  * - command[0] = Command ID

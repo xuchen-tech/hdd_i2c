@@ -7,8 +7,65 @@
 
 #include <ti/segger/SEGGER_RTT.h>
 
+static ADC_Handle g_adc;
+static ADC_Params g_adcParams;
+
 volatile int16_t g_latestTemp_x10 = 0;
 volatile uint32_t g_latestTempSeq = 0;
+
+bool pt100Init(void) {
+    ADC_Params_init(&g_adcParams);
+    g_adc = ADC_open(CONFIG_ADC_0, &g_adcParams);
+    if (g_adc == NULL) {
+        SEGGER_RTT_printf(0, "PT100: Error initializing CONFIG_ADC_0\n");
+        return false;
+    } else {
+        SEGGER_RTT_printf(0, "PT100: CONFIG_ADC_0 initialized\n");
+        return true;
+    }
+}
+
+bool pt100Deinit(void) {
+    if (g_adc != NULL) {
+        ADC_close(g_adc);
+        g_adc = NULL;
+        SEGGER_RTT_printf(0, "PT100: CONFIG_ADC_0 deinitialized\n");
+    }
+    return true;
+}
+
+bool pt100ReadRaw(uint16_t *rawData) {
+    if (g_adc == NULL) {
+        SEGGER_RTT_printf(0, "PT100: ADC not initialized\n");
+        return false;
+    }
+
+    uint16_t localRaw = 0;
+    int_fast16_t res = ADC_convert(g_adc, &localRaw);
+    if (res != ADC_STATUS_SUCCESS) {
+        SEGGER_RTT_printf(0, "PT100: ADC_convert failed\n");
+        return false;
+    }
+
+    if (rawData) {
+        *rawData = localRaw;
+    }
+    return true;
+}
+
+bool pt100ReadMicroVolts(uint32_t *microVolts) {
+    uint16_t localRaw = 0;
+    if (!pt100ReadRaw(&localRaw)) {
+        return false;
+    }
+
+    uint32_t local_uV = ADC_convertRawToMicroVolts(g_adc, localRaw);
+
+    if (microVolts) {
+        *microVolts = local_uV;
+    }
+    return true;
+}
 
 static TaskHandle_t g_pt100TaskHandle = NULL;
 
@@ -143,23 +200,17 @@ void PT100_publish_latest(int16_t temp_x10)
 void *pt100Thread(void *arg0)
 {
     (void)arg0;
-
-    ADC_Handle adc;
-    ADC_Params adcParams;
     PT100_Config pt100Cfg;
 
-    /* Capture task handle so other code can notify us */
-    g_pt100TaskHandle = xTaskGetCurrentTaskHandle();
-
-    /* Open ADC for on-demand PT100 sampling */
-    ADC_Params_init(&adcParams);
-    adc = ADC_open(CONFIG_ADC_0, &adcParams);
-    if (adc == NULL) {
-        SEGGER_RTT_printf(0, "PT100: Error initializing CONFIG_ADC_0\n");
+    if (pt100Init() == false) {
+        SEGGER_RTT_printf(0, "PT100 thread: pt100Init failed\n");
         while (1) {
             ;
         }
     }
+
+    /* Capture task handle so other code can notify us */
+    g_pt100TaskHandle = xTaskGetCurrentTaskHandle();
 
     PT100_Config_init(&pt100Cfg);
 
@@ -172,7 +223,11 @@ void *pt100Thread(void *arg0)
         uint32_t r_mohm = 0;
         uint32_t v_node_uV = 0;
 
-        if (PT100_sample(adc, &pt100Cfg, &raw, &adc_uV, &temp_x10, &r_mohm, &v_node_uV)) {
+        pt100ReadRaw(&raw);
+        pt100ReadMicroVolts(&adc_uV);
+        SEGGER_RTT_printf(0, "PT100 on-demand: raw=%u, microVolts=%lu\n", (unsigned)raw, (unsigned long)adc_uV);
+
+        if (PT100_sample(g_adc, &pt100Cfg, &raw, &adc_uV, &temp_x10, &r_mohm, &v_node_uV)) {
             PT100_publish_latest(temp_x10);
             SEGGER_RTT_printf(0,
                               "PT100 on-demand: Vadc=%lu uV, R=%lu mOhm, Temp_x10=%d\n",

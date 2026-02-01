@@ -9,6 +9,8 @@
 #include <FreeRTOS.h>
 #include <task.h>
 
+#include "hdd_i2c_config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,12 +32,6 @@ extern "C" {
 #ifndef PT100_AMP_GAIN
 #define PT100_AMP_GAIN (101.0)
 #endif
-
-typedef struct {
-    double vcc_uV;
-    double pullup_ohms;
-    double amp_gain;
-} PT100_Config;
 
 /* Latest published temperature (0.1C units) for sharing with other modules */
 extern volatile int16_t g_latestTemp_x10;
@@ -83,6 +79,15 @@ void *pt100Thread(void *arg0);
 
 /* Task handle for notifying the PT100 thread */
 TaskHandle_t PT100_getTaskHandle(void);
+
+/*  pt100 initialize */
+bool pt100Init(void);
+/*  pt100 de-initialize */
+bool pt100Deinit(void);
+/*  pt100 16bit raw data read */
+bool pt100ReadRaw(uint16_t *rawData);
+/*  pt100 32bit MicroVolts  */
+bool pt100ReadMicroVolts(uint32_t *microVolts);
 
 #ifdef __cplusplus
 }

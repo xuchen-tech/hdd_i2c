@@ -57,6 +57,7 @@
 extern void *mainThread(void *arg0);
 extern void *i2cControllerThread(void *arg0);
 extern void *pt100Thread(void *arg0);
+extern void *payloadManagerThread(void *arg0);
 
 /* Stack size in bytes */
 #define THREADSTACKSIZE configMINIMAL_STACK_SIZE * 4
@@ -118,6 +119,13 @@ int main(void)
     }
 
     retc = pthread_create(&thread, &attrs, mainThread, NULL);
+    if (retc != 0) {
+        /* pthread_create() failed */
+        while (1) {
+        }
+    }
+
+    retc = pthread_create(&thread, &attrs, payloadManagerThread, NULL);
     if (retc != 0) {
         /* pthread_create() failed */
         while (1) {

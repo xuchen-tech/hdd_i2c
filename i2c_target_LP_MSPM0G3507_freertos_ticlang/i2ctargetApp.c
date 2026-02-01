@@ -55,15 +55,13 @@
 #include <ti/segger/SEGGER_RTT.h>
 #include "cmdinterface.h"
 
+#include "hdd_i2c_config.h"
 #include "pt100.h"
 #include "nas2300.h"
 
 /* Driver configuration */
 #include "ti_drivers_config.h"
 
-#define REG_MODE_0x80 0x80
-#define REG_READY_0x81 0x81
-#define REG_DATA_0x82 0x82
 
 /* With 0x81 reporting length as a uint8_t, max representable length is 255.
  * Use an 8-byte multiple to keep room for future expansion.
@@ -163,12 +161,12 @@ void *mainThread(void *arg0)
     GPIO_setConfig(CONFIG_GPIO_LED_0,
         GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW | CONFIG_GPIO_LED_0_IOMUX);
 
-    SEGGER_RTT_printf(0, "Starting the I2CTarget example\n");
+    SEGGER_RTT_printf(0, "Starting the I2CTarget\n");
 
     /* Open I2CTarget driver */
     I2CTarget_Params_init(&i2cParams);
     i2cParams.eventCallbackFxn = i2cTargetCallback;
-    i2cParams.targetAddress    = TGT_ADDRESS;
+    i2cParams.targetAddress    = HDD_I2C_TARGET_ADDRESS;
     i2cHandle = I2CTarget_open(CONFIG_I2C_TARGET_0, &i2cParams);
     if (i2cHandle == NULL) {
         SEGGER_RTT_printf(0, "Error Initializing I2CTarget\n");

@@ -52,7 +52,7 @@
 
 #include "hdd_i2c_config.h"
 #include "hdd_i2c_payload_manager.h"
-#include "nas2300.h"
+#include "i2c_controller.h"
 #include "pt100.h"
 
 /* Driver configuration */
@@ -62,6 +62,12 @@
  * Use an 8-byte multiple to keep room for future expansion.
  */
 #define READY_PAYLOAD_MAX_LEN_BYTES 248
+
+/* NOTE: I2CTarget callbacks run in interrupt context.
+ * Avoid potentially blocking/slow logging (e.g. SEGGER RTT) inside the I2C ISR
+ * path; it can stall the bus and make the controller hang in I2C_transfer().
+ */
+#define HDD_I2C_TARGET_ISR_LOG 0
 
 static volatile uint8_t g_regMode = 0x00;  /* reg 0x80: Mode */
 static volatile uint8_t g_regReady = 0x00; /* reg 0x81: Ready */
@@ -299,9 +305,11 @@ static int regMode80Handler(I2CTarget_Handle handle, uint8_t* data,
         /* Return Mode */
         *data = g_regMode;
       } else {
+#if HDD_I2C_TARGET_ISR_LOG
         SEGGER_RTT_printf(0,
                           "regMode80Handler: processing payload, data=0x%02x\n",
                           (unsigned)(*data));
+#endif
         const uint8_t prevMode = g_regMode;
         g_regMode = *data;
 
@@ -343,9 +351,11 @@ static int regReady81Handler(I2CTarget_Handle handle, uint8_t* data,
         /* Return Ready */
         *data = g_regReady;
       } else {
+#if HDD_I2C_TARGET_ISR_LOG
         SEGGER_RTT_printf(
             0, "regReady81Handler: processing payload, data=0x%02x\n",
             (unsigned)(*data));
+#endif
         g_regReady = *data;
         if (g_regReady == 0) {
           g_regMode = HDD_I2C_MODE_IDLE;

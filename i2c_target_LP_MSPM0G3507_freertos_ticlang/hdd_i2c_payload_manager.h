@@ -2,7 +2,7 @@
 #define __HDD_I2C_PAYLOAD_MANAGER_H__
 
 #include "pt100.h"
-#include "nas2300.h"
+#include "i2c_controller.h"
 #include "i2ctargetApp.h"
 
 /* Trigger the payload manager task to run one cycle.

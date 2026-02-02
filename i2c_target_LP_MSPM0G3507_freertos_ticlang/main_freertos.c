@@ -60,8 +60,8 @@ extern void *pt100Thread(void *arg0);
 extern void *payloadManagerThread(void *arg0);
 
 /* Stack size in bytes */
-#define MAIN_THREADSTACKSIZE    (configMINIMAL_STACK_SIZE * 4)
-#define PAYLOAD_THREADSTACKSIZE (configMINIMAL_STACK_SIZE * 8)
+#define MAIN_THREADSTACKSIZE    (1024)
+#define PAYLOAD_THREADSTACKSIZE (1024)
 
 /* Set up the hardware ready to run this demo */
 static void prvSetupHardware(void);

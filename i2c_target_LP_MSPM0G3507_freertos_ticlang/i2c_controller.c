@@ -1,4 +1,4 @@
-#include "nas2300.h"
+#include "i2c_controller.h"
 
 #include <string.h>
 /* For usleep() */

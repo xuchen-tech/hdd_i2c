@@ -60,6 +60,7 @@ void *payloadManagerThread(void *arg0) {
     bool ret;
     uint16_t pt100Raw;
     uint8_t dataBuffer[BUFFER_SIZE] = {0};
+    uint8_t mode = 0, ready = 0;
 
     (void)arg0;
 
@@ -115,7 +116,44 @@ void *payloadManagerThread(void *arg0) {
             continue;
         }
         SEGGER_RTT_printf(0, "Payload Manager: built payload of %u bytes\n", (unsigned)payloadLen);
-        updatePayloadData(dataBuffer, payloadLen);
-        updateReady(payloadLen);
+        if (hddI2CReadMode(&mode)) {
+            SEGGER_RTT_printf(0, "HDD I2C Mode: 0x%02x\n", (unsigned)mode);
+            if (hddI2CWriteMode(HDD_I2C_MODE_D1)) {
+                SEGGER_RTT_printf(0, "HDD I2C Write Mode D1 succeeded\n");
+                for (uint8_t i = 0; i < 100; i ++) {
+                    if (hddI2CReadReady(&ready)) {
+                        SEGGER_RTT_printf(0, "HDD I2C Ready: 0x%02x\n", (unsigned)ready);
+                        if (ready != 0) {
+                            SEGGER_RTT_printf(0, "HDD I2C Read Ready indicates data ready\n");
+                            if (hddI2CReadData(dataBuffer + payloadLen, ready)) {
+                                SEGGER_RTT_printf(0, "HDD I2C Read Data of %u bytes succeeded\n", (unsigned)ready);
+                                updatePayloadData(dataBuffer, payloadLen + ready);
+                                updateReady(payloadLen + ready);
+                                if (hddI2CWriteReady(0)) {
+                                    SEGGER_RTT_printf(0, "HDD I2C Write Ready 0 succeeded\n");
+                                } else {
+                                    SEGGER_RTT_printf(0, "HDD I2C Write Ready 0 failed\n");
+                                }
+                            } else {
+                                SEGGER_RTT_printf(0, "HDD I2C Read Data failed\n");
+                            }
+                            break;
+                        } else {
+                            SEGGER_RTT_printf(0, "HDD I2C Read Ready indicates data NOT ready; retrying...\n");
+                            usleep(1000); /* 10ms */
+                            continue;
+                        }
+                    } else {
+                        SEGGER_RTT_printf(0, "HDD I2C Read Ready failed\n");
+                    }
+                }
+            } else {
+                SEGGER_RTT_printf(0, "HDD I2C Write Mode D1 failed\n");
+            }
+        } else {
+            SEGGER_RTT_printf(0, "HDD I2C Read Mode failed\n"); // this indicate has no conntectted device
+            updatePayloadData(dataBuffer, payloadLen);
+            updateReady(payloadLen);
+        }
     }
 }

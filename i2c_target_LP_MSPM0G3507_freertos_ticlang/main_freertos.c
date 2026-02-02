@@ -53,6 +53,7 @@
 
 #include "ti_drivers_config.h"
 #include "ti_msp_dl_config.h"
+#include "hdd_i2c_calibraton.h"
 
 extern void *mainThread(void *arg0);
 extern void *i2cControllerThread(void *arg0);
@@ -91,6 +92,7 @@ int main(void)
     I2C_init();
     ADC_init();
 
+    hddI2CCalibrationInit();
     SEGGER_RTT_printf(0, "Starting the segger rtt logger\n");
 
     /* payloadManagerThread: lower priority, larger stack */

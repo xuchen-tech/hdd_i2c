@@ -18,6 +18,80 @@ static uint8_t rxBuffer[BUFFER_SIZE];
 static I2C_Handle g_i2cHandle;
 static I2C_Params g_i2cParams;
 
+static void i2cErrorHandler(I2C_Transaction* transaction);
+
+static bool i2cWriteReg8(uint8_t targetAddress, uint8_t* txBuf,
+                         size_t txBufSize, uint8_t reg, uint8_t value) {
+  I2C_Transaction i2cTransaction;
+  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 2) {
+    return false;
+  }
+
+  txBuf[0] = reg;
+  txBuf[1] = value;
+
+  i2cTransaction.writeBuf = txBuf;
+  i2cTransaction.writeCount = 2;
+  i2cTransaction.readBuf = rxBuffer;
+  i2cTransaction.readCount = 0;
+  i2cTransaction.targetAddress = targetAddress;
+
+  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
+    i2cErrorHandler(&i2cTransaction);
+    return false;
+  }
+  return true;
+}
+
+static bool i2cReadReg8(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
+                        uint8_t* rxBuf, size_t rxBufSize, uint8_t reg,
+                        uint8_t* value) {
+  I2C_Transaction i2cTransaction;
+  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
+      rxBufSize < 1 || value == NULL) {
+    return false;
+  }
+
+  txBuf[0] = reg;
+  i2cTransaction.writeBuf = txBuf;
+  i2cTransaction.writeCount = 1;
+  i2cTransaction.readBuf = rxBuf;
+  i2cTransaction.readCount = 1;
+  i2cTransaction.targetAddress = targetAddress;
+
+  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
+    i2cErrorHandler(&i2cTransaction);
+    return false;
+  }
+  *value = rxBuf[0];
+  return true;
+}
+
+static bool i2cReadRegN(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
+                        uint8_t* rxBuf, size_t rxBufSize, uint8_t startReg,
+                        uint8_t* out, size_t outLen) {
+  I2C_Transaction i2cTransaction;
+  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
+      rxBufSize < outLen || out == NULL) {
+    return false;
+  }
+
+  txBuf[0] = startReg;
+  i2cTransaction.writeBuf = txBuf;
+  i2cTransaction.writeCount = 1;
+  i2cTransaction.readBuf = rxBuf;
+  i2cTransaction.readCount = (uint16_t)outLen;
+  i2cTransaction.targetAddress = targetAddress;
+
+  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
+    i2cErrorHandler(&i2cTransaction);
+    return false;
+  }
+
+  memcpy(out, rxBuf, outLen);
+  return true;
+}
+
 static void i2cErrorHandler(I2C_Transaction* transaction) {
   switch (transaction->status) {
     case I2C_STATUS_TIMEOUT:
@@ -90,68 +164,24 @@ bool nas2300Deinit() {
 
 bool nsa2300WriteReg8(uint8_t* txBuf, size_t txBufSize, uint8_t reg,
                       uint8_t value) {
-  I2C_Transaction i2cTransaction;
-  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 2) {
-    SEGGER_RTT_printf(0, "1 - NSA2300: I2C not initialized\n");
+  if (!i2cWriteReg8(NAS2300_I2C_ADDRESS, txBuf, txBufSize, reg, value)) {
+    SEGGER_RTT_printf(0, "NSA2300: write reg 0x%02x failed\n", (unsigned)reg);
     return false;
   }
-  txBuf[0] = reg;
-  txBuf[1] = value;
-
-  /* Common I2C transaction setup */
-  i2cTransaction.writeBuf = txBuf;
-  i2cTransaction.writeCount = 2;
-  i2cTransaction.readBuf = rxBuffer;
-  i2cTransaction.readCount = 0;
-  i2cTransaction.targetAddress = NAS2300_I2C_ADDRESS;
-
-  return I2C_transfer(g_i2cHandle, &i2cTransaction);
+  return true;
 }
 
 bool nsa2300ReadReg8(uint8_t* txBuf, size_t txBufSize, uint8_t* rxBuf,
                      size_t rxBufSize, uint8_t reg, uint8_t* value) {
-  I2C_Transaction i2cTransaction;
-  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
-      rxBufSize < 1 || value == NULL) {
-    return false;
-  }
-  txBuf[0] = reg;
-  i2cTransaction.writeBuf = txBuf;
-  i2cTransaction.writeCount = 1;
-  i2cTransaction.readBuf = rxBuf;
-  i2cTransaction.readCount = 1;
-  i2cTransaction.targetAddress = NAS2300_I2C_ADDRESS;
-
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
-    i2cErrorHandler(&i2cTransaction);
-    return false;
-  }
-  *value = rxBuf[0];
-  return true;
+  return i2cReadReg8(NAS2300_I2C_ADDRESS, txBuf, txBufSize, rxBuf, rxBufSize,
+                     reg, value);
 }
 
 bool nsa2300ReadRegN(uint8_t* txBuf, size_t txBufSize, uint8_t* rxBuf,
                      size_t rxBufSize, uint8_t startReg, uint8_t* out,
                      size_t outLen) {
-  I2C_Transaction i2cTransaction;
-  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
-      rxBufSize < outLen || out == NULL) {
-    return false;
-  }
-  txBuf[0] = startReg;
-  i2cTransaction.writeBuf = txBuf;
-  i2cTransaction.writeCount = 1;
-  i2cTransaction.readBuf = rxBuf;
-  i2cTransaction.readCount = (uint16_t)outLen;
-  i2cTransaction.targetAddress = NAS2300_I2C_ADDRESS;
-
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
-    i2cErrorHandler(&i2cTransaction);
-    return false;
-  }
-
-  memcpy(out, rxBuf, outLen);
-  return true;
+  return i2cReadRegN(NAS2300_I2C_ADDRESS, txBuf, txBufSize, rxBuf, rxBufSize,
+                     startReg, out, outLen);
 }
 
 bool nsa2300StartMeasurement() {
@@ -204,73 +234,29 @@ bool nsa2300ReadPressureRaw24Single(uint32_t* p24) {
 
 bool hddI2CWriteReg8(uint8_t* txBuf, size_t txBufSize, uint8_t reg,
                      uint8_t value) {
-  I2C_Transaction i2cTransaction;
-  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 2) {
-    SEGGER_RTT_printf(0, "1 - HDD: I2C not initialized\n");
+  if (!i2cWriteReg8(HDD_I2C_TARGET_ADDRESS, txBuf, txBufSize, reg, value)) {
+    SEGGER_RTT_printf(0, "HDD: write reg 0x%02x failed\n", (unsigned)reg);
     return false;
   }
-  txBuf[0] = reg;
-  txBuf[1] = value;
-
-  /* Common I2C transaction setup */
-  i2cTransaction.writeBuf = txBuf;
-  i2cTransaction.writeCount = 2;
-  i2cTransaction.readBuf = rxBuffer;
-  i2cTransaction.readCount = 0;
-  i2cTransaction.targetAddress = HDD_I2C_TARGET_ADDRESS;
-
-  return I2C_transfer(g_i2cHandle, &i2cTransaction);
+  return true;
 }
 
 bool hddI2CReadReg8(uint8_t* txBuf, size_t txBufSize, uint8_t* rxBuf,
                     size_t rxBufSize, uint8_t reg, uint8_t* value) {
-  I2C_Transaction i2cTransaction;
-  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
-      rxBufSize < 1 || value == NULL) {
-    return false;
-  }
-  txBuf[0] = reg;
-  i2cTransaction.writeBuf = txBuf;
-  i2cTransaction.writeCount = 1;
-  i2cTransaction.readBuf = rxBuf;
-  i2cTransaction.readCount = 1;
-  i2cTransaction.targetAddress = HDD_I2C_TARGET_ADDRESS;
-
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
-    i2cErrorHandler(&i2cTransaction);
-    return false;
-  }
-  *value = rxBuf[0];
-  return true;
+  return i2cReadReg8(HDD_I2C_TARGET_ADDRESS, txBuf, txBufSize, rxBuf, rxBufSize,
+                     reg, value);
 }
 
 bool hddI2CReadRegN(uint8_t* txBuf, size_t txBufSize, uint8_t* rxBuf,
                     size_t rxBufSize, uint8_t startReg, uint8_t* out,
                     size_t outLen) {
-  I2C_Transaction i2cTransaction;
-  if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
-      rxBufSize < outLen || out == NULL) {
-    return false;
-  }
-  txBuf[0] = startReg;
-  i2cTransaction.writeBuf = txBuf;
-  i2cTransaction.writeCount = 1;
-  i2cTransaction.readBuf = rxBuf;
-  i2cTransaction.readCount = (uint16_t)outLen;
-  i2cTransaction.targetAddress = HDD_I2C_TARGET_ADDRESS;
-
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
-    i2cErrorHandler(&i2cTransaction);
-    return false;
-  }
-
-  memcpy(out, rxBuf, outLen);
-  return true;
+  return i2cReadRegN(HDD_I2C_TARGET_ADDRESS, txBuf, txBufSize, rxBuf, rxBufSize,
+                     startReg, out, outLen);
 }
 
 bool hddI2CReadMode(uint8_t* mode) {
   if (hddI2CReadReg8(txBuffer, sizeof(txBuffer), rxBuffer, sizeof(rxBuffer),
-                      REG_MODE_0x80, &mode) == false) {
+                     REG_MODE_0x80, mode) == false) {
     SEGGER_RTT_printf(0, "HDD: Failed to read mode register\n");
     return false;
   }

@@ -7,11 +7,20 @@
 
 #include "ti_drivers_config.h"
 
+PT100_Config cfg = {
+    .vcc_uV = PT100_VCC_UV,
+    .pullup_ohms = PT100_PULLUP_OHMS,
+    .amp_gain = PT100_AMP_GAIN,
+};
+
 static ADC_Handle g_adc;
 static ADC_Params g_adcParams;
 
-volatile int16_t g_latestTemp_x10 = 0;
-volatile uint32_t g_latestTempSeq = 0;
+static bool PT100_convert_adc_uV_to_temp_x10(const PT100_Config *cfg,
+                                            uint32_t adc_uV, int16_t *temp_x10,
+                                            uint32_t *r_mohm,
+                                            uint32_t *v_node_uV);
+static double pt100_tempC_from_ohms(double r_ohm);
 
 bool pt100Init(void) {
   ADC_Params_init(&g_adcParams);
@@ -34,7 +43,7 @@ bool pt100Deinit(void) {
   return true;
 }
 
-bool pt100ReadRaw(uint16_t* rawData) {
+bool pt100ReadRaw(uint16_t *rawData) {
   if (g_adc == NULL) {
     SEGGER_RTT_printf(0, "PT100: ADC not initialized\n");
     return false;
@@ -53,20 +62,38 @@ bool pt100ReadRaw(uint16_t* rawData) {
   return true;
 }
 
-bool pt100ReadMicroVolts(uint32_t* microVolts) {
+bool pt100ReadMicroVolts(uint32_t *microVolts) {
   uint16_t localRaw = 0;
   if (!pt100ReadRaw(&localRaw)) {
     return false;
   }
-
   uint32_t local_uV = ADC_convertRawToMicroVolts(g_adc, localRaw);
 
   if (microVolts) {
     *microVolts = local_uV;
   }
+  SEGGER_RTT_printf(0, "PT100: localRaw: %u, ADC microVolts = %u\n", (unsigned)localRaw, (unsigned)local_uV);
   return true;
 }
 
+bool pt100ReadTemperature_x10(int16_t *temp_x10) {
+  uint32_t microVolts = 0;
+  if (!pt100ReadMicroVolts(&microVolts)) {
+    return false;
+  }
+
+  int16_t localTemp_x10 = 0;
+  if (!PT100_convert_adc_uV_to_temp_x10(&cfg, microVolts, &localTemp_x10, NULL,
+                                        NULL)) {
+    return false;
+  }
+
+  if (temp_x10) {
+    *temp_x10 = localTemp_x10;
+  }
+
+  return true;
+}
 
 static double pt100_tempC_from_ohms(double r_ohm) {
   /* IEC 60751 Callendar–Van Dusen coefficients */
@@ -99,10 +126,10 @@ static double pt100_tempC_from_ohms(double r_ohm) {
   return t;
 }
 
-
-bool PT100_convert_adc_uV_to_temp_x10(const PT100_Config* cfg, uint32_t adc_uV,
-                                      int16_t* temp_x10, uint32_t* r_mohm,
-                                      uint32_t* v_node_uV) {
+static bool PT100_convert_adc_uV_to_temp_x10(const PT100_Config *cfg,
+                                             uint32_t adc_uV, int16_t *temp_x10,
+                                             uint32_t *r_mohm,
+                                             uint32_t *v_node_uV) {
   if (cfg == NULL) {
     return false;
   }
@@ -131,20 +158,24 @@ bool PT100_convert_adc_uV_to_temp_x10(const PT100_Config* cfg, uint32_t adc_uV,
 
   const double tempC = pt100_tempC_from_ohms(rpt_ohm);
   long t10 = lround(tempC * 10.0);
-  if (t10 > 32767) t10 = 32767;
-  if (t10 < -32768) t10 = -32768;
+  if (t10 > 32767)
+    t10 = 32767;
+  if (t10 < -32768)
+    t10 = -32768;
 
   if (temp_x10) {
     *temp_x10 = (int16_t)t10;
   }
   if (r_mohm) {
     long rm = lround(rpt_ohm * 1000.0);
-    if (rm < 0) rm = 0;
+    if (rm < 0)
+      rm = 0;
     *r_mohm = (uint32_t)rm;
   }
   if (v_node_uV) {
     long vv = lround(v_div_uV);
-    if (vv < 0) vv = 0;
+    if (vv < 0)
+      vv = 0;
     *v_node_uV = (uint32_t)vv;
   }
 

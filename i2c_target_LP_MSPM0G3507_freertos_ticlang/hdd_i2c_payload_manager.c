@@ -85,9 +85,9 @@ void *payloadManagerThread(void *arg0) {
 
         SEGGER_RTT_printf(0, "Payload Manager: notified, sampling...\n");
 
-        ret = pt100ReadRaw(&pt100Raw);
+        ret = pt100ReadTemperature_x10(&pt100Raw);
         if (ret == true) {
-            SEGGER_RTT_printf(0, "PT100 Raw Data: %u\n", (unsigned)pt100Raw);
+            SEGGER_RTT_printf(0, "PT100 temp: %d\n", (uint16_t)pt100Raw);
         } else {
             SEGGER_RTT_printf(0, "PT100 Read Raw failed\n");
             pt100Raw = 0;

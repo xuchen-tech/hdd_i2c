@@ -40,7 +40,8 @@ bool pt100Deinit(void);
 bool pt100ReadRaw(uint16_t* rawData);
 /*  pt100 32bit MicroVolts  */
 bool pt100ReadMicroVolts(uint32_t* microVolts);
-
+/*  pt100 temperature in 0.1C units */
+bool pt100ReadTemperature_x10(int16_t* temp_x10);
 #ifdef __cplusplus
 }
 #endif

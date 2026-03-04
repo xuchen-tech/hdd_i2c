@@ -573,7 +573,7 @@ static int regReady81Handler(I2CTarget_Handle handle, uint8_t* data,
     case STATE_PROCESS_PAYLOAD:
       if (direction == HDD_I2C_DIRECTION_READ) {
         /* Return Ready */
-        *data = 0x08;
+        *data = g_regReady;
       } else {
 #if HDD_I2C_TARGET_ISR_LOG
         SEGGER_RTT_printf(
@@ -581,9 +581,6 @@ static int regReady81Handler(I2CTarget_Handle handle, uint8_t* data,
             (unsigned)(*data));
 #endif
         g_regReady = *data;
-        if (g_regReady == 0) {
-          g_regMode = HDD_I2C_MODE_IDLE;
-        }
       }
       protocolState = STATE_CMD_DONE;
       break;

@@ -71,5 +71,5 @@ void SYSCFG_DL_initPower(void);
 void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
 void SYSCFG_DL_SYSCTL_CLK_init(void);
-
+void SYSCFG_DL_I2C_init(void);
 #endif /* ti_msp_dl_config_h */

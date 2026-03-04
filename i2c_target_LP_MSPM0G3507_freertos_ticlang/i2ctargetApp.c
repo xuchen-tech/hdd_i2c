@@ -123,20 +123,62 @@ void updatePayloadData(uint8_t* data, uint8_t len) {
   }
   memcpy((void*)g_readyPayload, (const void*)data, len);
 }
+
+/* Maximum size of TX packet */
+#define I2C_TX_MAX_PACKET_SIZE (16)
+
+/* Maximum size of RX packet */
+#define I2C_RX_MAX_PACKET_SIZE (16)
+
+/* Ring buffer for ISR -> task logging (power-of-two size) */
+#define I2C_LOG_RING_SIZE 64
+static volatile uint8_t i2cLogRing[I2C_LOG_RING_SIZE];
+static volatile uint32_t i2cLogHead = 0; /* written by ISR */
+static volatile uint32_t i2cLogTail = 0; /* read by task */
+static TaskHandle_t i2cLogTaskHandle = NULL;
+
+/* IRQ diagnostics */
+static volatile uint32_t gI2cIrqCount = 0;
+static volatile uint32_t gI2cStartCount = 0;
+static volatile uint32_t gI2cRxTrigCount = 0;
+static volatile uint32_t gI2cStopCount = 0;
+static volatile uint32_t gI2cRxDoneCount = 0;
+static volatile uint32_t gI2cTxTrigCount = 0;
+static volatile uint32_t gI2cTxDoneCount = 0;
+static volatile uint32_t gI2cRxOverflowCount = 0;
+static volatile uint32_t gI2cDefaultCount = 0;
+static volatile uint32_t gI2cLastIidx = 0;
+static volatile uint8_t gLastRegAddr = 0x00;
+static volatile uint8_t gTxResponseByte = 0xA5;
+
+/* Log task prototype */
+static void i2cLogTask(void *pvParameters);
+
+/* Data sent to Controller in response to Read transfer */
+uint8_t gTxPacket[I2C_TX_MAX_PACKET_SIZE] = {0x00};
+
+/* Counters for TX length and bytes sent */
+uint32_t gTxLen, gTxCount;
+
+/* Data received from Controller during a Write transfer */
+uint8_t gRxPacket[I2C_RX_MAX_PACKET_SIZE];
+/* Counters for TX length and bytes sent */
+uint32_t gRxLen, gRxCount;
 /*
  *  ======== mainThread ========
  */
 void* mainThread(void* arg0) {
+  GPIO_setConfig(CONFIG_GPIO_LED_0,
+                 GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW | CONFIG_GPIO_LED_0_IOMUX);
+  /*
   I2CTarget_Handle i2cHandle;
   I2CTarget_Params i2cParams;
 
-  /* Configure the LED0 and LED1*/
   GPIO_setConfig(CONFIG_GPIO_LED_0,
                  GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW | CONFIG_GPIO_LED_0_IOMUX);
 
   SEGGER_RTT_printf(0, "Starting the I2CTarget\n");
 
-  /* Open I2CTarget driver */
   I2CTarget_Params_init(&i2cParams);
   i2cParams.eventCallbackFxn = i2cTargetCallback;
   i2cParams.targetAddress = HDD_I2C_TARGET_ADDRESS;
@@ -149,19 +191,156 @@ void* mainThread(void* arg0) {
   } else {
     SEGGER_RTT_printf(0, "I2C Target Initialized!\n");
   }
-
-  /* Turn on user LED to indicate successful initialization */
-  GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_ON);
-
-  /* Initialize state machine */
+  */
+  GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
+  gTxCount = 0;
+  gTxLen   = I2C_TX_MAX_PACKET_SIZE;
+  /*
   protocolState = STATE_WAIT_FOR_CMD;
 
-  /* Start driver, it will now act on I2C traffic */
   I2CTarget_start(i2cHandle);
+  */
+  gRxCount = 0;
+  gRxLen   = I2C_RX_MAX_PACKET_SIZE;
+  /* Enable RX FIFO trigger interrupt as well as TX FIFO trigger */
+  DL_I2C_enableInterrupt(I2C0_INST,
+               DL_I2C_INTERRUPT_TARGET_START |
+                         DL_I2C_INTERRUPT_TARGET_RXFIFO_TRIGGER |
+                 DL_I2C_INTERRUPT_TARGET_TX_DONE |
+                            DL_I2C_INTERRUPT_TARGET_STOP);
 
+  /* Create a low-priority task to drain the ring buffer and print logs
+   * (uses blocking / potentially slow calls like SEGGER_RTT_printf)
+   * Create the task before enabling the NVIC so the ISR can safely notify
+   * the task without racing on the handle being NULL. */
+  xTaskCreate(i2cLogTask, "I2CLog", 256, NULL, 1, &i2cLogTaskHandle);
+
+  /* Now enable the I2C IRQ */
+  NVIC_EnableIRQ(I2C0_INT_IRQn);
   while (1) {
-    usleep(1000);
+    sleep(1);
+    SEGGER_RTT_printf(
+        0,
+        "IRQ=%lu START=%lu RXTRIG=%lu TXTRIG=%lu TXDONE=%lu RXDONE=%lu STOP=%lu OF=%lu DEF=%lu IIDX=%lu gRxCount=%lu P0=0x%02x P1=0x%02x\n",
+        (unsigned long)gI2cIrqCount, (unsigned long)gI2cStartCount,
+        (unsigned long)gI2cRxTrigCount, (unsigned long)gI2cTxTrigCount,
+        (unsigned long)gI2cTxDoneCount, (unsigned long)gI2cRxDoneCount,
+        (unsigned long)gI2cStopCount, (unsigned long)gI2cRxOverflowCount,
+        (unsigned long)gI2cDefaultCount, (unsigned long)gI2cLastIidx,
+        (unsigned long)gRxCount, gRxPacket[0], gRxPacket[1]);
   }
+}
+
+void I2C0_IRQHandler(void)
+{
+  static bool dataRx = false;
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  uint32_t iidx = DL_I2C_getPendingInterrupt(I2C0_INST);
+  gI2cIrqCount++;
+  gI2cLastIidx = iidx;
+
+  switch (iidx) {
+    case DL_I2C_IIDX_TARGET_START:
+      gI2cStartCount++;
+      /* Repeated-start happens between write(reg) and read(data).
+       * Do not clear RX context or flush TX FIFO here, otherwise prepared
+       * response byte is lost and controller read can block. */
+      if (gRxCount == 0) {
+        gTxCount = 0;
+        DL_I2C_flushTargetTXFIFO(I2C0_INST);
+      }
+      /* no printing from ISR */
+      break;
+
+    case DL_I2C_IIDX_TARGET_RXFIFO_TRIGGER:
+      gI2cRxTrigCount++;
+      GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_ON);
+      dataRx = true;
+      while (DL_I2C_isTargetRXFIFOEmpty(I2C0_INST) != true) {
+        uint8_t data = DL_I2C_receiveTargetData(I2C0_INST);
+
+        /* First received byte is register address for subsequent read */
+        if (gRxCount == 0) {
+          gLastRegAddr = data;
+          if (gLastRegAddr == REG_MODE_0x80) {
+            gTxResponseByte = 0xD1;
+          } else if (gLastRegAddr == REG_READY_0x81) {
+            gTxResponseByte = g_regReady;
+          } else {
+            gTxResponseByte = 0xA5;
+          }
+
+          /* Preload one byte for upcoming READ (repeated-start). This avoids
+           * depending on TARGET_TXFIFO_TRIGGER timing. */
+          DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
+          if (gTxCount < gTxLen) {
+            gTxPacket[gTxCount++] = gTxResponseByte;
+          }
+        }
+
+        /* byte snapshot for main debug */
+        if (gRxCount < gRxLen) {
+          gRxPacket[gRxCount++] = data;
+        } else {
+          gI2cRxOverflowCount++;
+        }
+
+        /* ring buffer for task-context logging */
+        {
+          uint32_t next = (i2cLogHead + 1) & (I2C_LOG_RING_SIZE - 1);
+          if (next != i2cLogTail) {
+            i2cLogRing[i2cLogHead] = data;
+            i2cLogHead = next;
+          }
+        }
+      }
+
+      if (i2cLogTaskHandle != NULL) {
+        vTaskNotifyGiveFromISR(i2cLogTaskHandle, &xHigherPriorityTaskWoken);
+      }
+      break;
+
+    case DL_I2C_IIDX_TARGET_TXFIFO_TRIGGER:
+      /* Provide one response byte so controller READ does not stall */
+      {
+        uint8_t txByte = gTxResponseByte;
+        gI2cTxTrigCount++;
+
+        DL_I2C_transmitTargetData(I2C0_INST, txByte);
+        if (gTxCount < gTxLen) {
+          gTxPacket[gTxCount++] = txByte;
+        }
+      }
+      break;
+
+    case DL_I2C_IIDX_TARGET_TX_DONE:
+      gI2cTxDoneCount++;
+      break;
+
+    case DL_I2C_IIDX_TARGET_STOP:
+      /* no printing from ISR */
+      gI2cStopCount++;
+      dataRx = false;
+      gRxCount = 0;
+      gLastRegAddr = 0x00;
+      GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
+      break;
+
+    case DL_I2C_IIDX_TARGET_RX_DONE:
+      gI2cRxDoneCount++;
+      gRxCount = 0;
+      GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
+    break;
+    case DL_I2C_IIDX_TARGET_RXFIFO_FULL:
+    case DL_I2C_IIDX_TARGET_GENERAL_CALL:
+    case DL_I2C_IIDX_TARGET_EVENT1_DMA_DONE:
+    case DL_I2C_IIDX_TARGET_EVENT2_DMA_DONE:
+    default:
+      gI2cDefaultCount++;
+      break;
+  }
+
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 /*
@@ -186,7 +365,7 @@ static int_fast16_t i2cTargetCallback(I2CTarget_Handle handle,
       /* Protocol expects 1 write from controller (CMD), but we got read.
        * Send dummy data.
        */
-      *val = 0xff;
+      *val = 0x00;
       /* We should always return success. */
       retCode = I2CTarget_STATUS_SUCCESS;
     } else {
@@ -244,40 +423,40 @@ static int cmdHandler(I2CTarget_Handle handle, uint8_t* data,
 static void i2cErrorHandler(I2C_Transaction* transaction) {
   switch (transaction->status) {
     case I2C_STATUS_TIMEOUT:
-      SEGGER_RTT_printf(0, "I2C transaction timed out!");
+      // SEGGER_RTT_printf(0, "I2C transaction timed out!");
       break;
     case I2C_STATUS_CLOCK_TIMEOUT:
-      SEGGER_RTT_printf(0, "I2C serial clock line timed out!");
+      // SEGGER_RTT_printf(0, "I2C serial clock line timed out!");
       break;
     case I2C_STATUS_ADDR_NACK:
-      SEGGER_RTT_printf(0,
-                        "I2C target address 0x%x not"
-                        " acknowledged!",
-                        transaction->targetAddress);
+      // SEGGER_RTT_printf(0,
+      //                   "I2C target address 0x%x not"
+      //                   " acknowledged!",
+      //                   transaction->targetAddress);
       break;
     case I2C_STATUS_DATA_NACK:
-      SEGGER_RTT_printf(0, "I2C data byte not acknowledged!");
+      // SEGGER_RTT_printf(0, "I2C data byte not acknowledged!");
       break;
     case I2C_STATUS_ARB_LOST:
-      SEGGER_RTT_printf(0, "I2C arbitration to another controller!");
+      // SEGGER_RTT_printf(0, "I2C arbitration to another controller!");
       break;
     case I2C_STATUS_INCOMPLETE:
-      SEGGER_RTT_printf(0, "I2C transaction returned before completion!");
+      // SEGGER_RTT_printf(0, "I2C transaction returned before completion!");
       break;
     case I2C_STATUS_BUS_BUSY:
-      SEGGER_RTT_printf(0, "I2C bus is already in use!");
+      // SEGGER_RTT_printf(0, "I2C bus is already in use!");
       break;
     case I2C_STATUS_CANCEL:
-      SEGGER_RTT_printf(0, "I2C transaction cancelled!");
+      // SEGGER_RTT_printf(0, "I2C transaction cancelled!");
       break;
     case I2C_STATUS_INVALID_TRANS:
-      SEGGER_RTT_printf(0, "I2C transaction invalid!");
+      // SEGGER_RTT_printf(0, "I2C transaction invalid!");
       break;
     case I2C_STATUS_ERROR:
-      SEGGER_RTT_printf(0, "I2C generic error!");
+      // SEGGER_RTT_printf(0, "I2C generic error!");
       break;
     default:
-      SEGGER_RTT_printf(0, "I2C undefined error case!");
+      // SEGGER_RTT_printf(0, "I2C undefined error case!");
       break;
   }
 }
@@ -303,7 +482,7 @@ static int regMode80Handler(I2CTarget_Handle handle, uint8_t* data,
     case STATE_PROCESS_PAYLOAD:
       if (direction == HDD_I2C_DIRECTION_READ) {
         /* Return Mode */
-        *data = g_regMode;
+        *data = 0xD1;
       } else {
 #if HDD_I2C_TARGET_ISR_LOG
         SEGGER_RTT_printf(0,
@@ -315,7 +494,7 @@ static int regMode80Handler(I2CTarget_Handle handle, uint8_t* data,
 
         if ((prevMode != g_regMode) &&
             (g_regMode == (uint8_t)HDD_I2C_MODE_D1)) {
-          PayloadManager_requestSampleFromISR();
+          // PayloadManager_requestSampleFromISR();
         }
       }
       protocolState = STATE_CMD_DONE;
@@ -326,6 +505,24 @@ static int regMode80Handler(I2CTarget_Handle handle, uint8_t* data,
       break;
   }
   return 0;
+}
+
+/* Background task: drain ring buffer and print logs (runs in task context) */
+static void i2cLogTask(void *pvParameters)
+{
+  (void)pvParameters;
+
+  for (;;) {
+    /* Block until ISR notifies us there is data */
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    /* Drain buffer */
+    while (i2cLogTail != i2cLogHead) {
+      uint8_t data = i2cLogRing[i2cLogTail];
+      i2cLogTail = (i2cLogTail + 1) & (I2C_LOG_RING_SIZE - 1);
+      SEGGER_RTT_printf(0, "I2C0_data: %02x\n", data);
+    }
+  }
 }
 
 /* reg 0x81 (Ready) R/W:
@@ -349,7 +546,7 @@ static int regReady81Handler(I2CTarget_Handle handle, uint8_t* data,
     case STATE_PROCESS_PAYLOAD:
       if (direction == HDD_I2C_DIRECTION_READ) {
         /* Return Ready */
-        *data = g_regReady;
+        *data = 0x08;
       } else {
 #if HDD_I2C_TARGET_ISR_LOG
         SEGGER_RTT_printf(
@@ -383,18 +580,20 @@ static int regData82Handler(I2CTarget_Handle handle, uint8_t* data,
   switch (protocolState) {
     case STATE_WAIT_FOR_CMD:
       protocolState = STATE_PROCESS_PAYLOAD;
+      cmd.dataCount = 8;
+      cmd.dataIdx = 0;
       break;
 
     case STATE_PROCESS_PAYLOAD:
       if (direction == HDD_I2C_DIRECTION_READ) {
         /* Return next payload byte */
-        *data = g_readyPayload[cmd.dataIdx];
-        cmd.dataIdx++;
-        if (cmd.dataIdx >= READY_PAYLOAD_MAX_LEN_BYTES) {
-          cmd.dataIdx = READY_PAYLOAD_MAX_LEN_BYTES - 1;
+        if (cmd.dataIdx < cmd.dataCount) {
+          *data = 0xA5;
+          cmd.dataIdx++;
+        } else {
+          protocolState = STATE_CMD_DONE;
         }
       }
-      protocolState = STATE_PROCESS_PAYLOAD;
       break;
 
     default:

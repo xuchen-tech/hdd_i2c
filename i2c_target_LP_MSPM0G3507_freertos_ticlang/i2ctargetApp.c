@@ -206,6 +206,7 @@ void* mainThread(void* arg0) {
   DL_I2C_enableInterrupt(I2C0_INST,
                DL_I2C_INTERRUPT_TARGET_START |
                          DL_I2C_INTERRUPT_TARGET_RXFIFO_TRIGGER |
+       DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
                  DL_I2C_INTERRUPT_TARGET_TX_DONE |
                             DL_I2C_INTERRUPT_TARGET_STOP);
 
@@ -245,7 +246,21 @@ void I2C0_IRQHandler(void)
       /* Repeated-start happens between write(reg) and read(data).
        * Do not clear RX context or flush TX FIFO here, otherwise prepared
        * response byte is lost and controller read can block. */
-      if (gRxCount == 0) {
+      if (gRxCount == 1) {
+        /* Only treat as repeated-start-to-read when exactly one byte
+         * (register address) has been received. */
+        uint8_t txByte = 0xA5;
+        if (gLastRegAddr == REG_MODE_0x80) {
+          txByte = g_regMode;
+        } else if (gLastRegAddr == REG_READY_0x81) {
+          txByte = g_regReady;
+        }
+
+        DL_I2C_transmitTargetData(I2C0_INST, txByte);
+        if (gTxCount < gTxLen) {
+          gTxPacket[gTxCount++] = txByte;
+        }
+      } else {
         gTxCount = 0;
         DL_I2C_flushTargetTXFIFO(I2C0_INST);
       }
@@ -263,24 +278,26 @@ void I2C0_IRQHandler(void)
         if (gRxCount == 0) {
           gLastRegAddr = data;
           if (gLastRegAddr == REG_MODE_0x80) {
-            gTxResponseByte = 0xD1;
+            gTxResponseByte = g_regMode;
           } else if (gLastRegAddr == REG_READY_0x81) {
             gTxResponseByte = g_regReady;
           } else {
             gTxResponseByte = 0xA5;
-          }
-
-          /* Preload one byte for upcoming READ (repeated-start). This avoids
-           * depending on TARGET_TXFIFO_TRIGGER timing. */
-          DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
-          if (gTxCount < gTxLen) {
-            gTxPacket[gTxCount++] = gTxResponseByte;
           }
         }
 
         /* byte snapshot for main debug */
         if (gRxCount < gRxLen) {
           gRxPacket[gRxCount++] = data;
+
+          /* Handle register write: [regAddr, value] */
+          if ((gRxCount == 2) && (gLastRegAddr == REG_MODE_0x80)) {
+            g_regMode = data;
+            gTxResponseByte = g_regMode;
+          } else if ((gRxCount == 2) && (gLastRegAddr == REG_READY_0x81)) {
+            g_regReady = data;
+            gTxResponseByte = g_regReady;
+          }
         } else {
           gI2cRxOverflowCount++;
         }
@@ -303,8 +320,16 @@ void I2C0_IRQHandler(void)
     case DL_I2C_IIDX_TARGET_TXFIFO_TRIGGER:
       /* Provide one response byte so controller READ does not stall */
       {
-        uint8_t txByte = gTxResponseByte;
+        uint8_t txByte = 0xA5;
         gI2cTxTrigCount++;
+
+        if (gLastRegAddr == REG_MODE_0x80) {
+          txByte = g_regMode;
+        } else if (gLastRegAddr == REG_READY_0x81) {
+          txByte = g_regReady;
+        } else if (gLastRegAddr == REG_DATA_0x82) {
+          txByte = 0xA5;
+        }
 
         DL_I2C_transmitTargetData(I2C0_INST, txByte);
         if (gTxCount < gTxLen) {
@@ -323,12 +348,14 @@ void I2C0_IRQHandler(void)
       dataRx = false;
       gRxCount = 0;
       gLastRegAddr = 0x00;
+      gTxResponseByte = 0xA5;
       GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
       break;
 
     case DL_I2C_IIDX_TARGET_RX_DONE:
       gI2cRxDoneCount++;
       gRxCount = 0;
+      gLastRegAddr = 0x00;
       GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
     break;
     case DL_I2C_IIDX_TARGET_RXFIFO_FULL:

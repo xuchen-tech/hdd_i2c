@@ -69,8 +69,8 @@
  */
 #define HDD_I2C_TARGET_ISR_LOG 0
 
-static volatile uint8_t g_regMode = 0x00;  /* reg 0x80: Mode */
-static volatile uint8_t g_regReady = 0x00; /* reg 0x81: Ready */
+static volatile uint8_t g_regMode = 0xD1;  /* reg 0x80: Mode */
+static volatile uint8_t g_regReady = 0x08; /* reg 0x81: Ready */
 static volatile uint8_t
     g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES]; /* reg 0x82: Data */
 static volatile uint8_t g_errorCode = 0x00;      /* reg 0x83: Error Code */
@@ -150,6 +150,7 @@ static volatile uint32_t gI2cDefaultCount = 0;
 static volatile uint32_t gI2cLastIidx = 0;
 static volatile uint8_t gLastRegAddr = 0x00;
 static volatile uint8_t gTxResponseByte = 0xA5;
+static volatile uint8_t gReg82TxCount = 0;
 
 /* Log task prototype */
 static void i2cLogTask(void *pvParameters);
@@ -235,6 +236,7 @@ void* mainThread(void* arg0) {
 void I2C0_IRQHandler(void)
 {
   static bool dataRx = false;
+  static bool regPointerLatched = false;
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   uint32_t iidx = DL_I2C_getPendingInterrupt(I2C0_INST);
   gI2cIrqCount++;
@@ -243,27 +245,16 @@ void I2C0_IRQHandler(void)
   switch (iidx) {
     case DL_I2C_IIDX_TARGET_START:
       gI2cStartCount++;
-      /* Repeated-start happens between write(reg) and read(data).
-       * Do not clear RX context or flush TX FIFO here, otherwise prepared
-       * response byte is lost and controller read can block. */
-      if (gRxCount == 1) {
-        /* Only treat as repeated-start-to-read when exactly one byte
-         * (register address) has been received. */
-        uint8_t txByte = 0xA5;
-        if (gLastRegAddr == REG_MODE_0x80) {
-          txByte = g_regMode;
-        } else if (gLastRegAddr == REG_READY_0x81) {
-          txByte = g_regReady;
-        }
-
-        DL_I2C_transmitTargetData(I2C0_INST, txByte);
-        if (gTxCount < gTxLen) {
-          gTxPacket[gTxCount++] = txByte;
-        }
-      } else {
-        gTxCount = 0;
-        DL_I2C_flushTargetTXFIFO(I2C0_INST);
-      }
+      /* Start of a transfer phase.
+       * Keep TX FIFO intact here because repeated-start READ depends on the
+       * response byte preloaded right after register pointer write. */
+      dataRx = false;
+      regPointerLatched = false;
+      gRxCount = 0;
+      gTxCount = 0;
+      gReg82TxCount = 0;
+      gLastRegAddr = 0x00;
+      gTxResponseByte = 0x00;
       /* no printing from ISR */
       break;
 
@@ -274,15 +265,42 @@ void I2C0_IRQHandler(void)
       while (DL_I2C_isTargetRXFIFOEmpty(I2C0_INST) != true) {
         uint8_t data = DL_I2C_receiveTargetData(I2C0_INST);
 
-        /* First received byte is register address for subsequent read */
-        if (gRxCount == 0) {
+        /* First received byte after START is register address */
+        if (!regPointerLatched) {
           gLastRegAddr = data;
+          regPointerLatched = true;
+          /* New register pointer received: clear stale TX bytes and preload
+           * first response byte to avoid controller blocking at read start. */
+          DL_I2C_flushTargetTXFIFO(I2C0_INST);
+
           if (gLastRegAddr == REG_MODE_0x80) {
-            gTxResponseByte = g_regMode;
+            gTxResponseByte = 0xD1;
+            DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
+            if (gTxCount < gTxLen) {
+              gTxPacket[gTxCount++] = gTxResponseByte;
+            }
           } else if (gLastRegAddr == REG_READY_0x81) {
-            gTxResponseByte = g_regReady;
-          } else {
+            gTxResponseByte = 0x08;
+            DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
+            if (gTxCount < gTxLen) {
+              gTxPacket[gTxCount++] = gTxResponseByte;
+            }
+          } else if (gLastRegAddr == REG_DATA_0x82) {
+            gReg82TxCount = 0;
             gTxResponseByte = 0xA5;
+            for (uint8_t i = 0; i < 8; i++) {
+              DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
+              if (gTxCount < gTxLen) {
+                gTxPacket[gTxCount++] = gTxResponseByte;
+              }
+            }
+            gReg82TxCount = 8;
+          } else {
+            gTxResponseByte = 0x00;
+            DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
+            if (gTxCount < gTxLen) {
+              gTxPacket[gTxCount++] = gTxResponseByte;
+            }
           }
         }
 
@@ -324,11 +342,18 @@ void I2C0_IRQHandler(void)
         gI2cTxTrigCount++;
 
         if (gLastRegAddr == REG_MODE_0x80) {
-          txByte = g_regMode;
+          txByte = 0xD1;
         } else if (gLastRegAddr == REG_READY_0x81) {
-          txByte = g_regReady;
+          txByte = 0x08;
         } else if (gLastRegAddr == REG_DATA_0x82) {
-          txByte = 0xA5;
+          if (gReg82TxCount < 8) {
+            txByte = 0xA5;
+            gReg82TxCount++;
+          } else {
+            txByte = 0x00;
+          }
+        } else {
+          txByte = 0x00;
         }
 
         DL_I2C_transmitTargetData(I2C0_INST, txByte);
@@ -340,6 +365,11 @@ void I2C0_IRQHandler(void)
 
     case DL_I2C_IIDX_TARGET_TX_DONE:
       gI2cTxDoneCount++;
+      /* Read transaction completed, clear parser context for next frame */
+      gRxCount = 0;
+      gLastRegAddr = 0x00;
+      gReg82TxCount = 0;
+      regPointerLatched = false;
       break;
 
     case DL_I2C_IIDX_TARGET_STOP:
@@ -348,14 +378,16 @@ void I2C0_IRQHandler(void)
       dataRx = false;
       gRxCount = 0;
       gLastRegAddr = 0x00;
-      gTxResponseByte = 0xA5;
+      gTxResponseByte = 0x00;
+      gReg82TxCount = 0;
+      regPointerLatched = false;
       GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
       break;
 
     case DL_I2C_IIDX_TARGET_RX_DONE:
       gI2cRxDoneCount++;
-      gRxCount = 0;
-      gLastRegAddr = 0x00;
+      /* Keep pointer context for repeated-start READ. Cleared by TX_DONE/STOP. */
+      regPointerLatched = false;
       GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
     break;
     case DL_I2C_IIDX_TARGET_RXFIFO_FULL:
@@ -573,7 +605,7 @@ static int regReady81Handler(I2CTarget_Handle handle, uint8_t* data,
     case STATE_PROCESS_PAYLOAD:
       if (direction == HDD_I2C_DIRECTION_READ) {
         /* Return Ready */
-        *data = g_regReady;
+        *data = 0x08;
       } else {
 #if HDD_I2C_TARGET_ISR_LOG
         SEGGER_RTT_printf(

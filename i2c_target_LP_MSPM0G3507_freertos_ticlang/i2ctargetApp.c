@@ -69,7 +69,7 @@
  */
 #define HDD_I2C_TARGET_ISR_LOG 0
 
-static volatile uint8_t g_regMode = 0xD1;  /* reg 0x80: Mode */
+static volatile uint8_t g_regMode = 0x00;  /* reg 0x80: Mode */
 static volatile uint8_t g_regReady = 0x08; /* reg 0x81: Ready */
 static volatile uint8_t
     g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES]; /* reg 0x82: Data */
@@ -274,7 +274,7 @@ void I2C0_IRQHandler(void)
           DL_I2C_flushTargetTXFIFO(I2C0_INST);
 
           if (gLastRegAddr == REG_MODE_0x80) {
-            gTxResponseByte = 0xD1;
+            gTxResponseByte = g_regMode;
             DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
             if (gTxCount < gTxLen) {
               gTxPacket[gTxCount++] = gTxResponseByte;
@@ -289,6 +289,11 @@ void I2C0_IRQHandler(void)
             gReg82TxCount = 0;
             gTxResponseByte = 0xA5;
             for (uint8_t i = 0; i < 8; i++) {
+              if (i == 6) {
+                gTxResponseByte = 0xDD;
+              } else if (i == 7) {
+                gTxResponseByte = 0x33;
+              }
               DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
               if (gTxCount < gTxLen) {
                 gTxPacket[gTxCount++] = gTxResponseByte;
@@ -310,8 +315,13 @@ void I2C0_IRQHandler(void)
 
           /* Handle register write: [regAddr, value] */
           if ((gRxCount == 2) && (gLastRegAddr == REG_MODE_0x80)) {
+            const uint8_t prevMode = g_regMode;
             g_regMode = data;
             gTxResponseByte = g_regMode;
+            if ((prevMode != g_regMode) &&
+                (g_regMode == (uint8_t)HDD_I2C_MODE_D1)) {
+              PayloadManager_requestSampleFromISR();
+            }
           } else if ((gRxCount == 2) && (gLastRegAddr == REG_READY_0x81)) {
             g_regReady = data;
             gTxResponseByte = g_regReady;
@@ -342,12 +352,19 @@ void I2C0_IRQHandler(void)
         gI2cTxTrigCount++;
 
         if (gLastRegAddr == REG_MODE_0x80) {
-          txByte = 0xD1;
+          txByte = g_regMode;
         } else if (gLastRegAddr == REG_READY_0x81) {
           txByte = 0x08;
         } else if (gLastRegAddr == REG_DATA_0x82) {
           if (gReg82TxCount < 8) {
-            txByte = 0xA5;
+            if (gReg82TxCount == 6) {
+              txByte = 0xDD;
+            } else if (gReg82TxCount == 7) {
+              txByte = 0x33;
+            } else {
+              txByte = 0xA5;
+            }
+
             gReg82TxCount++;
           } else {
             txByte = 0x00;
@@ -540,8 +557,8 @@ static int regMode80Handler(I2CTarget_Handle handle, uint8_t* data,
 
     case STATE_PROCESS_PAYLOAD:
       if (direction == HDD_I2C_DIRECTION_READ) {
-        /* Return Mode */
-        *data = 0xD1;
+        /* Return current Mode */
+        *data = g_regMode;
       } else {
 #if HDD_I2C_TARGET_ISR_LOG
         SEGGER_RTT_printf(0,
@@ -553,7 +570,7 @@ static int regMode80Handler(I2CTarget_Handle handle, uint8_t* data,
 
         if ((prevMode != g_regMode) &&
             (g_regMode == (uint8_t)HDD_I2C_MODE_D1)) {
-          // PayloadManager_requestSampleFromISR();
+          PayloadManager_requestSampleFromISR();
         }
       }
       protocolState = STATE_CMD_DONE;

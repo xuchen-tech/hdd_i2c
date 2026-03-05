@@ -287,13 +287,9 @@ void I2C0_IRQHandler(void)
             }
           } else if (gLastRegAddr == REG_DATA_0x82) {
             gReg82TxCount = 0;
-            gTxResponseByte = 0xA5;
+            
             for (uint8_t i = 0; i < 8; i++) {
-              if (i == 6) {
-                gTxResponseByte = 0xDD;
-              } else if (i == 7) {
-                gTxResponseByte = 0x33;
-              }
+              gTxResponseByte = g_readyPayload[i];
               DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
               if (gTxCount < gTxLen) {
                 gTxPacket[gTxCount++] = gTxResponseByte;
@@ -354,7 +350,7 @@ void I2C0_IRQHandler(void)
         if (gLastRegAddr == REG_MODE_0x80) {
           txByte = g_regMode;
         } else if (gLastRegAddr == REG_READY_0x81) {
-          txByte = 0x08;
+          txByte = g_regReady;
         } else if (gLastRegAddr == REG_DATA_0x82) {
           if (gReg82TxCount < 8) {
             if (gReg82TxCount == 6) {

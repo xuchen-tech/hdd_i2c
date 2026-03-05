@@ -70,7 +70,7 @@
 #define HDD_I2C_TARGET_ISR_LOG 0
 
 static volatile uint8_t g_regMode = 0x00;  /* reg 0x80: Mode */
-static volatile uint8_t g_regReady = 0x08; /* reg 0x81: Ready */
+static volatile uint8_t g_regReady = 0x00; /* reg 0x81: Ready */
 static volatile uint8_t
     g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES]; /* reg 0x82: Data */
 static volatile uint8_t g_errorCode = 0x00;      /* reg 0x83: Error Code */

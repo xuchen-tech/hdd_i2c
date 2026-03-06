@@ -17,6 +17,8 @@
 
 static TaskHandle_t g_payloadManagerTaskHandle = NULL;
 
+#define PAYLOAD_UPDATE_PERIOD_MS 100
+
 static uint8_t buildDataPayload(uint8_t *buf, size_t bufSize,
                                 uint32_t pressureRaw24, uint16_t pt100Raw)
 {
@@ -81,8 +83,11 @@ void *payloadManagerThread(void *arg0) {
 
     while (1) {
         uint8_t readyToPublish = 0u;
-        /* Wait for a request from the I2C ISR / protocol handler */
-        (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        /* Periodic update; ISR notification can wake this earlier. */
+        (void)ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(PAYLOAD_UPDATE_PERIOD_MS));
+
+        /* Mark payload as busy-updating so master reads 0x81 = 0 */
+        updateReady(0u);
 
         SEGGER_RTT_printf(0, "Payload Manager: notified, sampling...\n");
 
@@ -96,12 +101,10 @@ void *payloadManagerThread(void *arg0) {
 
         if (!nsa2300StartMeasurement()) {
             SEGGER_RTT_printf(0, "NSA2300 Start Measurement failed\n");
-            updateReady(readyToPublish);
             continue;
         }
         if (!nsa2300WaitForDataReady()) {
             SEGGER_RTT_printf(0, "NSA2300 Wait For Data Ready failed\n");
-            updateReady(readyToPublish);
             continue;
         }
 
@@ -110,18 +113,17 @@ void *payloadManagerThread(void *arg0) {
             SEGGER_RTT_printf(0, "NSA2300 Pressure Raw 24-bit: %u, 0x:%x\n", pressureRaw24, pressureRaw24);
         } else {
             SEGGER_RTT_printf(0, "NSA2300 Read Pressure Raw 24-bit failed\n");
-            updateReady(readyToPublish);
             continue;
         }
 
         const uint8_t payloadLen = buildDataPayload(dataBuffer, sizeof(dataBuffer), pressureRaw24, pt100Raw);
         if (payloadLen == 0u) {
             SEGGER_RTT_printf(0, "Payload Manager: buildDataPayload failed\n");
-            updateReady(readyToPublish);
             continue;
         }
         readyToPublish = payloadLen;
         SEGGER_RTT_printf(0, "Payload Manager: built payload of %u bytes\n", (unsigned)payloadLen);
+
         if (hddI2CReadMode(&mode)) {
             SEGGER_RTT_printf(0, "HDD I2C Mode: 0x%02x\n", (unsigned)mode);
             if (hddI2CWriteMode(HDD_I2C_MODE_D1)) {
@@ -146,7 +148,7 @@ void *payloadManagerThread(void *arg0) {
                             break;
                         } else {
                             SEGGER_RTT_printf(0, "HDD I2C Read Ready indicates data NOT ready; retrying...\n");
-                            usleep(1000); /* 10ms */
+                            usleep(1000);
                             continue;
                         }
                     } else {
@@ -158,8 +160,12 @@ void *payloadManagerThread(void *arg0) {
             }
         } else {
             SEGGER_RTT_printf(0, "HDD I2C Read Mode failed\n"); // this indicate has no conntectted device
-            updatePayloadData(dataBuffer, payloadLen);
             readyToPublish = payloadLen;
+        }
+
+        /* Publish latest completed payload and then expose true size via 0x81 */
+        if (readyToPublish == payloadLen) {
+            updatePayloadData(dataBuffer, payloadLen);
         }
 
         updateReady(readyToPublish);

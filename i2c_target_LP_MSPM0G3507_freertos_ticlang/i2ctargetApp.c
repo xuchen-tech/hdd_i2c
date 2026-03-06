@@ -71,8 +71,8 @@
 
 static volatile uint8_t g_regMode = 0x00;  /* reg 0x80: Mode */
 static volatile uint8_t g_regReady = 0x00; /* reg 0x81: Ready */
-static volatile uint8_t
-    g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES]; /* reg 0x82: Data */
+static volatile uint8_t g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}; /* reg 0x82: Data */
 static volatile uint8_t g_errorCode = 0x00;      /* reg 0x83: Error Code */
 
 typedef enum {
@@ -280,7 +280,7 @@ void I2C0_IRQHandler(void)
               gTxPacket[gTxCount++] = gTxResponseByte;
             }
           } else if (gLastRegAddr == REG_READY_0x81) {
-            gTxResponseByte = g_regReady;
+            gTxResponseByte = 0x08;
             DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
             if (gTxCount < gTxLen) {
               gTxPacket[gTxCount++] = gTxResponseByte;
@@ -321,8 +321,6 @@ void I2C0_IRQHandler(void)
           } else if ((gRxCount == 2) && (gLastRegAddr == REG_READY_0x81)) {
             g_regReady = data;
             gTxResponseByte = g_regReady;
-            g_regMode = 0x00;
-            memset((void*)g_readyPayload, 0x00, sizeof(g_readyPayload));
           }
         } else {
           gI2cRxOverflowCount++;
@@ -355,14 +353,7 @@ void I2C0_IRQHandler(void)
           txByte = g_regReady;
         } else if (gLastRegAddr == REG_DATA_0x82) {
           if (gReg82TxCount < 8) {
-            if (gReg82TxCount == 6) {
-              txByte = 0xDD;
-            } else if (gReg82TxCount == 7) {
-              txByte = 0x33;
-            } else {
-              txByte = 0xA5;
-            }
-
+            txByte = g_readyPayload[gReg82TxCount];
             gReg82TxCount++;
           } else {
             txByte = 0x00;
@@ -620,7 +611,7 @@ static int regReady81Handler(I2CTarget_Handle handle, uint8_t* data,
     case STATE_PROCESS_PAYLOAD:
       if (direction == HDD_I2C_DIRECTION_READ) {
         /* Return Ready */
-        *data = 0x08;
+        *data = g_regReady;
       } else {
 #if HDD_I2C_TARGET_ISR_LOG
         SEGGER_RTT_printf(
@@ -659,9 +650,10 @@ static int regData82Handler(I2CTarget_Handle handle, uint8_t* data,
       if (direction == HDD_I2C_DIRECTION_READ) {
         /* Return next payload byte */
         if (cmd.dataIdx < cmd.dataCount) {
-          *data = 0xA5;
+          *data = g_readyPayload[cmd.dataIdx];
           cmd.dataIdx++;
         } else {
+          *data = 0x00;
           protocolState = STATE_CMD_DONE;
         }
       }

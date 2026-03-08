@@ -75,12 +75,31 @@ static volatile uint8_t g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}; /* reg 0x82: Data */
 static volatile uint8_t g_errorCode = 0x00;      /* reg 0x83: Error Code */
 
+static volatile uint8_t payloadBuf[2][READY_PAYLOAD_MAX_LEN_BYTES] = {
+  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B},
+  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}
+};
+static volatile uint8_t payloadLen[2] = {8, 8};
+static volatile uint8_t activeIndex = 0;
+static volatile uint8_t reg82SnapshotIndex;
+static volatile uint8_t reg82SnapshotLen;
+
+volatile size_t wrote = 0;
+
 void updateReady(uint8_t ready) { g_regReady = ready; }
 void updatePayloadData(uint8_t* data, uint8_t len) {
   if (len > READY_PAYLOAD_MAX_LEN_BYTES) {
     len = READY_PAYLOAD_MAX_LEN_BYTES;
   }
-  memcpy((void*)g_readyPayload, (const void*)data, len);
+  /* Write into inactive buffer, then publish by atomically swapping active index. */
+  uint8_t inactive = (uint8_t)(activeIndex ^ 1);
+  memcpy((void*)payloadBuf[inactive], (const void*)data, len);
+
+  /* publish length and swap active index atomically */
+  taskENTER_CRITICAL();
+  payloadLen[inactive] = (uint8_t)len;
+  activeIndex = inactive;
+  taskEXIT_CRITICAL();
 }
 
 /* Maximum size of TX packet */
@@ -114,6 +133,11 @@ static volatile uint8_t gReg82TxCount = 0;
 /* Log task prototype */
 static void i2cLogTask(void *pvParameters);
 
+/* Expose a small accessor so other tasks can detect heavy I2C activity. */
+uint32_t I2C_getIrqCount(void) {
+  return gI2cIrqCount;
+}
+
 /* Data sent to Controller in response to Read transfer */
 uint8_t gTxPacket[I2C_TX_MAX_PACKET_SIZE] = {0x00};
 
@@ -130,7 +154,6 @@ uint32_t gRxLen, gRxCount;
 void* mainThread(void* arg0) {
   GPIO_setConfig(CONFIG_GPIO_LED_0,
                  GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW | CONFIG_GPIO_LED_0_IOMUX);
-  GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
   gTxCount = 0;
   gTxLen   = I2C_TX_MAX_PACKET_SIZE;
 
@@ -153,7 +176,9 @@ void* mainThread(void* arg0) {
   /* Now enable the I2C IRQ */
   NVIC_EnableIRQ(I2C0_INT_IRQn);
   while (1) {
+    GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
     sleep(1);
+    GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_ON);
     SEGGER_RTT_printf(
         0,
         "IRQ=%lu START=%lu RXTRIG=%lu TXTRIG=%lu TXDONE=%lu RXDONE=%lu STOP=%lu OF=%lu DEF=%lu IIDX=%lu gRxCount=%lu P0=0x%02x P1=0x%02x\n",
@@ -193,7 +218,6 @@ void I2C0_IRQHandler(void)
 
     case DL_I2C_IIDX_TARGET_RXFIFO_TRIGGER:
       gI2cRxTrigCount++;
-      GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_ON);
       dataRx = true;
       while (DL_I2C_isTargetRXFIFOEmpty(I2C0_INST) != true) {
         uint8_t data = DL_I2C_receiveTargetData(I2C0_INST);
@@ -220,15 +244,14 @@ void I2C0_IRQHandler(void)
             }
           } else if (gLastRegAddr == REG_DATA_0x82) {
             gReg82TxCount = 0;
+            gI2cTxDoneCount = 0;
+            reg82SnapshotIndex = activeIndex;
+            reg82SnapshotLen = payloadLen[reg82SnapshotIndex];
 
-            for (uint8_t i = 0; i < 8; i++) {
-              gTxResponseByte = g_readyPayload[i];
-              DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
-              if (gTxCount < gTxLen) {
-                gTxPacket[gTxCount++] = gTxResponseByte;
-              }
-            }
-            gReg82TxCount = 8;
+            size_t remaining = payloadLen[reg82SnapshotIndex];
+            wrote = DL_I2C_fillTargetTXFIFO(I2C0_INST,
+                            (void*)&payloadBuf[reg82SnapshotIndex][gReg82TxCount], 8);
+            gReg82TxCount += (uint8_t)wrote;
           } else {
             gTxResponseByte = 0x00;
             DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
@@ -275,31 +298,6 @@ void I2C0_IRQHandler(void)
       break;
 
     case DL_I2C_IIDX_TARGET_TXFIFO_TRIGGER:
-      /* Provide one response byte so controller READ does not stall */
-      {
-        uint8_t txByte = 0xA5;
-        gI2cTxTrigCount++;
-
-        if (gLastRegAddr == REG_MODE_0x80) {
-          txByte = g_regMode;
-        } else if (gLastRegAddr == REG_READY_0x81) {
-          txByte = g_regReady;
-        } else if (gLastRegAddr == REG_DATA_0x82) {
-          if (gReg82TxCount < 8) {
-            txByte = g_readyPayload[gReg82TxCount];
-            gReg82TxCount++;
-          } else {
-            txByte = 0x00;
-          }
-        } else {
-          txByte = 0x00;
-        }
-
-        DL_I2C_transmitTargetData(I2C0_INST, txByte);
-        if (gTxCount < gTxLen) {
-          gTxPacket[gTxCount++] = txByte;
-        }
-      }
       break;
 
     case DL_I2C_IIDX_TARGET_TX_DONE:
@@ -309,6 +307,10 @@ void I2C0_IRQHandler(void)
       gLastRegAddr = 0x00;
       gReg82TxCount = 0;
       regPointerLatched = false;
+      // if (gI2cTxDoneCount == 7) {
+      //   DL_I2C_fillTargetTXFIFO(I2C0_INST,
+      //                       (void*)&payloadBuf[reg82SnapshotIndex][gReg82TxCount], 8);
+      // }
       break;
 
     case DL_I2C_IIDX_TARGET_STOP:
@@ -327,7 +329,6 @@ void I2C0_IRQHandler(void)
       gI2cRxDoneCount++;
       /* Keep pointer context for repeated-start READ. Cleared by TX_DONE/STOP. */
       regPointerLatched = false;
-      GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
     break;
     case DL_I2C_IIDX_TARGET_RXFIFO_FULL:
     case DL_I2C_IIDX_TARGET_GENERAL_CALL:

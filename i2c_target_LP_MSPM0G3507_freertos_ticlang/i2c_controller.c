@@ -200,14 +200,26 @@ bool nsa2300WaitForDataReady() {
   uint8_t status = 0;
   const uint32_t maxPolls = 1000u; /* ~1s at 1ms per poll */
   const useconds_t pollDelayUs = 1000u;
+  uint32_t consecutiveFail = 0;
 
   for (uint32_t poll = 0; poll < maxPolls; poll++) {
     if (nsa2300ReadReg8(txBuffer, sizeof(txBuffer), rxBuffer, sizeof(rxBuffer),
                         NSA2300_REG_STATUS, &status) == false) {
-      /* Read failed; treat as transient and retry. */
+      /* Read failed; count and log if persistent. */
+      consecutiveFail++;
+      if (consecutiveFail == 1) {
+        SEGGER_RTT_printf(0, "NSA2300: STATUS read failed (transient start)\n");
+      }
+      if (consecutiveFail > 50 && (consecutiveFail % 50) == 0) {
+        SEGGER_RTT_printf(0, "NSA2300: STATUS read failing repeatedly (%lu times). I2C handle null? %s\n",
+                          (unsigned long)consecutiveFail,
+                          (g_i2cHandle == NULL) ? "YES" : "NO");
+      }
       usleep(pollDelayUs);
       continue;
     }
+    /* successful read, reset fail counter */
+    consecutiveFail = 0;
     SEGGER_RTT_printf(0, "NSA2300: STATUS=0x%02x\n", (unsigned)status);
     if ((status & NSA2300_STATUS_DRDY_MASK) != 0) {
       return true;

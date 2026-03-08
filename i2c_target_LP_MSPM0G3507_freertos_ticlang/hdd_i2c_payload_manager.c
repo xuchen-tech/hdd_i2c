@@ -1,6 +1,7 @@
 #include "hdd_i2c_payload_manager.h"
 
 #include "hdd_i2c_utils.h"
+#include "i2c_controller.h"
 
 /* RTOS header files */
 #include <FreeRTOS.h>
@@ -44,6 +45,9 @@ static uint8_t buildDataPayload(uint8_t *buf, size_t bufSize,
     const uint16_t crc = crc16_modbus(buf, 6u);
     buf[6] = (uint8_t)(crc & 0xFFu);
     buf[7] = (uint8_t)((crc >> 8) & 0xFFu);
+
+    SEGGER_RTT_printf(0, "Built Payload: P24=0x%06x, PT100Raw=0x%04x, CRC16=0x%04x\n",
+                      (unsigned)p24, (unsigned)pt100Raw, (unsigned)crc);
 
     return 8u;
 }
@@ -89,30 +93,55 @@ void *payloadManagerThread(void *arg0) {
         /* Mark payload as busy-updating so master reads 0x81 = 0 */
         updateReady(0u);
 
-        SEGGER_RTT_printf(0, "Payload Manager: notified, sampling...\n");
+        SEGGER_RTT_printf(0, "PM: loop start - notified, sampling...\n");
 
+        SEGGER_RTT_printf(0, "PM: before pt100ReadTemperature_x10\n");
         ret = pt100ReadTemperature_x10(&pt100Raw);
         if (ret == true) {
-            SEGGER_RTT_printf(0, "PT100 temp: %d\n", (uint16_t)pt100Raw);
+            SEGGER_RTT_printf(0, "PM: pt100ReadTemperature_x10 OK, raw=%u\n", (uint16_t)pt100Raw);
         } else {
-            SEGGER_RTT_printf(0, "PT100 Read Raw failed\n");
+            SEGGER_RTT_printf(0, "PM: pt100ReadTemperature_x10 FAILED\n");
             pt100Raw = 0;
         }
 
-        if (!nsa2300StartMeasurement()) {
-            SEGGER_RTT_printf(0, "NSA2300 Start Measurement failed\n");
+        /* Wait briefly for the I2C bus to be quiet before becoming master.
+         * If an external controller is actively polling the target, attempting
+         * to use the same I2C peripheral as master can deadlock or fail.
+         */
+        SEGGER_RTT_printf(0, "PM: waiting for I2C bus quiet before NSA2300 start\n");
+        uint32_t prevIrq = I2C_getIrqCount();
+        bool busQuiet = false;
+        for (int w = 0; w < 10; ++w) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+            uint32_t cur = I2C_getIrqCount();
+            if (cur == prevIrq) {
+                busQuiet = true;
+                break;
+            }
+            prevIrq = cur;
+        }
+        if (!busQuiet) {
+            SEGGER_RTT_printf(0, "PM: I2C bus busy; skipping NSA2300 measurement this cycle\n");
             continue;
         }
+
+        SEGGER_RTT_printf(0, "PM: before nsa2300StartMeasurement\n");
+        if (!nsa2300StartMeasurement()) {
+            SEGGER_RTT_printf(0, "PM: nsa2300StartMeasurement FAILED\n");
+            continue;
+        }
+        SEGGER_RTT_printf(0, "PM: before nsa2300WaitForDataReady\n");
         if (!nsa2300WaitForDataReady()) {
-            SEGGER_RTT_printf(0, "NSA2300 Wait For Data Ready failed\n");
+            SEGGER_RTT_printf(0, "PM: nsa2300WaitForDataReady FAILED\n");
             continue;
         }
 
         uint32_t pressureRaw24;
+        SEGGER_RTT_printf(0, "PM: before nsa2300ReadPressureRaw24Single\n");
         if (nsa2300ReadPressureRaw24Single(&pressureRaw24)) {
-            SEGGER_RTT_printf(0, "NSA2300 Pressure Raw 24-bit: %u, 0x:%x\n", pressureRaw24, pressureRaw24);
+            SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureRaw24Single OK: %u, 0x:%x\n", pressureRaw24, pressureRaw24);
         } else {
-            SEGGER_RTT_printf(0, "NSA2300 Read Pressure Raw 24-bit failed\n");
+            SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureRaw24Single FAILED\n");
             continue;
         }
 
@@ -166,8 +195,13 @@ void *payloadManagerThread(void *arg0) {
         /* Publish latest completed payload and then expose true size via 0x81 */
         if (readyToPublish == payloadLen) {
             updatePayloadData(dataBuffer, payloadLen);
+            // print all data in payload for debug
+            SEGGER_RTT_printf(0, "Published Payload Data (%u bytes):", (unsigned)payloadLen);
+            for (uint8_t i = 0; i < payloadLen; i++) {
+                SEGGER_RTT_printf(0, " %02x", dataBuffer[i]);
+            }
+            SEGGER_RTT_printf(0, "\n");
         }
-
         updateReady(readyToPublish);
     }
 }

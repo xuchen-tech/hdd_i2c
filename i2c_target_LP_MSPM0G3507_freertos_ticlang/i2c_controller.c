@@ -26,12 +26,14 @@ static volatile bool g_i2cTransferDone = false;
 static volatile bool g_i2cTransferStatus = false;
 
 #define I2C_TRANSFER_WAIT_MS 200
+#define I2C_TRANSFER_MAX_ATTEMPTS 2
 
 static void i2cErrorHandler(I2C_Transaction* transaction);
 static void i2cTransferCallback(I2C_Handle handle,
                                 I2C_Transaction* transaction,
                                 bool transferStatus);
 static bool i2cTransferAndWait(I2C_Transaction* transaction);
+static bool i2cRecoverController(void);
 
 static void i2cTransferCallback(I2C_Handle handle,
                                 I2C_Transaction* transaction,
@@ -47,40 +49,82 @@ static void i2cTransferCallback(I2C_Handle handle,
   }
 }
 
+static bool i2cRecoverController(void) {
+  if (g_i2cHandle != NULL) {
+    I2C_close(g_i2cHandle);
+    g_i2cHandle = NULL;
+  }
+
+  DL_I2C_reset(I2C1_INST);
+  DL_I2C_enablePower(I2C1_INST);
+  delay_cycles(POWER_STARTUP_DELAY);
+
+  g_i2cTransferDone = false;
+  g_i2cTransferStatus = false;
+
+  g_i2cHandle = I2C_open(CONFIG_I2C_0, &g_i2cParams);
+  if (g_i2cHandle == NULL) {
+    SEGGER_RTT_printf(0, "I2C recovery failed: reopen controller failed\n");
+    return false;
+  }
+
+  SEGGER_RTT_printf(0, "I2C controller recovered\n");
+  return true;
+}
+
 static bool i2cTransferAndWait(I2C_Transaction* transaction) {
-  TickType_t startTick;
   const TickType_t timeoutTicks = pdMS_TO_TICKS(I2C_TRANSFER_WAIT_MS);
 
   if (transaction == NULL || g_i2cHandle == NULL) {
     return false;
   }
 
-  g_i2cTransferDone = false;
-  g_i2cTransferStatus = false;
+  for (uint32_t attempt = 0; attempt < I2C_TRANSFER_MAX_ATTEMPTS; ++attempt) {
+    TickType_t startTick;
 
-  if (!I2C_transfer(g_i2cHandle, transaction)) {
-    i2cErrorHandler(transaction);
-    return false;
-  }
+    g_i2cTransferDone = false;
+    g_i2cTransferStatus = false;
 
-  startTick = xTaskGetTickCount();
-  while (!g_i2cTransferDone) {
-    if ((xTaskGetTickCount() - startTick) >= timeoutTicks) {
-      SEGGER_RTT_printf(0, "I2C callback wait timed out after %u ms\n",
-                        (unsigned)I2C_TRANSFER_WAIT_MS);
+    if (!I2C_transfer(g_i2cHandle, transaction)) {
+      i2cErrorHandler(transaction);
+      if ((attempt + 1u) < I2C_TRANSFER_MAX_ATTEMPTS && i2cRecoverController()) {
+        continue;
+      }
       return false;
     }
-    vTaskDelay(pdMS_TO_TICKS(1));
-  }
 
-  if (!g_i2cTransferStatus) {
-    if (transaction != NULL) {
-      i2cErrorHandler(transaction);
+    startTick = xTaskGetTickCount();
+    while (!g_i2cTransferDone) {
+      if ((xTaskGetTickCount() - startTick) >= timeoutTicks) {
+        SEGGER_RTT_printf(0,
+                          "I2C callback wait timed out after %u ms (attempt %lu)\n",
+                          (unsigned)I2C_TRANSFER_WAIT_MS,
+                          (unsigned long)(attempt + 1u));
+        if ((attempt + 1u) < I2C_TRANSFER_MAX_ATTEMPTS && i2cRecoverController()) {
+          goto retry_transfer;
+        }
+        return false;
+      }
+      vTaskDelay(pdMS_TO_TICKS(1));
     }
-    return false;
+
+    if (!g_i2cTransferStatus) {
+      if (transaction != NULL) {
+        i2cErrorHandler(transaction);
+      }
+      if ((attempt + 1u) < I2C_TRANSFER_MAX_ATTEMPTS && i2cRecoverController()) {
+        continue;
+      }
+      return false;
+    }
+
+    return true;
+
+retry_transfer:
+    continue;
   }
 
-  return true;
+  return false;
 }
 
 static bool i2cWriteReg8(uint8_t targetAddress, uint8_t* txBuf,
@@ -186,7 +230,8 @@ static void i2cErrorHandler(I2C_Transaction* transaction) {
       SEGGER_RTT_printf(0, "I2C generic error!\n");
       break;
     default:
-      SEGGER_RTT_printf(0, "I2C undefined error case!\n");
+      SEGGER_RTT_printf(0, "I2C undefined error case! raw status=%d\n",
+                        (int)transaction->status);
       break;
   }
 }

@@ -129,6 +129,7 @@ static volatile uint32_t gI2cLastIidx = 0;
 static volatile uint8_t gLastRegAddr = 0x00;
 static volatile uint8_t gTxResponseByte = 0xA5;
 static volatile uint8_t gReg82TxCount = 0;
+static volatile uint32_t gI2cPauseDepth = 0;
 
 /* Log task prototype */
 static void i2cLogTask(void *pvParameters);
@@ -136,6 +137,38 @@ static void i2cLogTask(void *pvParameters);
 /* Expose a small accessor so other tasks can detect heavy I2C activity. */
 uint32_t I2C_getIrqCount(void) {
   return gI2cIrqCount;
+}
+
+void I2CTarget_pauseService(void) {
+  taskENTER_CRITICAL();
+  gI2cPauseDepth++;
+  if (gI2cPauseDepth == 1u) {
+    NVIC_DisableIRQ(I2C0_INT_IRQn);
+    DL_I2C_disableInterrupt(I2C0_INST,
+                            DL_I2C_INTERRUPT_TARGET_START |
+                            DL_I2C_INTERRUPT_TARGET_RXFIFO_TRIGGER |
+                            DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
+                            DL_I2C_INTERRUPT_TARGET_TX_DONE |
+                            DL_I2C_INTERRUPT_TARGET_STOP);
+  }
+  taskEXIT_CRITICAL();
+}
+
+void I2CTarget_resumeService(void) {
+  taskENTER_CRITICAL();
+  if (gI2cPauseDepth != 0u) {
+    gI2cPauseDepth--;
+    if (gI2cPauseDepth == 0u) {
+      DL_I2C_enableInterrupt(I2C0_INST,
+                             DL_I2C_INTERRUPT_TARGET_START |
+                             DL_I2C_INTERRUPT_TARGET_RXFIFO_TRIGGER |
+                             DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
+                             DL_I2C_INTERRUPT_TARGET_TX_DONE |
+                             DL_I2C_INTERRUPT_TARGET_STOP);
+      NVIC_EnableIRQ(I2C0_INT_IRQn);
+    }
+  }
+  taskEXIT_CRITICAL();
 }
 
 /* Data sent to Controller in response to Read transfer */

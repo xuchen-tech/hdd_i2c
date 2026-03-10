@@ -1,6 +1,11 @@
 #include "i2c_controller.h"
 
 #include <string.h>
+
+/* RTOS header files */
+#include <FreeRTOS.h>
+#include <task.h>
+
 /* For usleep() */
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/I2C.h>
@@ -17,8 +22,66 @@ static uint8_t rxBuffer[BUFFER_SIZE];
 
 static I2C_Handle g_i2cHandle;
 static I2C_Params g_i2cParams;
+static volatile bool g_i2cTransferDone = false;
+static volatile bool g_i2cTransferStatus = false;
+
+#define I2C_TRANSFER_WAIT_MS 200
 
 static void i2cErrorHandler(I2C_Transaction* transaction);
+static void i2cTransferCallback(I2C_Handle handle,
+                                I2C_Transaction* transaction,
+                                bool transferStatus);
+static bool i2cTransferAndWait(I2C_Transaction* transaction);
+
+static void i2cTransferCallback(I2C_Handle handle,
+                                I2C_Transaction* transaction,
+                                bool transferStatus) {
+  (void)handle;
+
+  g_i2cTransferStatus = transferStatus;
+  g_i2cTransferDone = true;
+
+  if (!transferStatus && transaction != NULL) {
+    SEGGER_RTT_printf(0, "I2C callback: transfer failed, status=%d\n",
+                      (int)transaction->status);
+  }
+}
+
+static bool i2cTransferAndWait(I2C_Transaction* transaction) {
+  TickType_t startTick;
+  const TickType_t timeoutTicks = pdMS_TO_TICKS(I2C_TRANSFER_WAIT_MS);
+
+  if (transaction == NULL || g_i2cHandle == NULL) {
+    return false;
+  }
+
+  g_i2cTransferDone = false;
+  g_i2cTransferStatus = false;
+
+  if (!I2C_transfer(g_i2cHandle, transaction)) {
+    i2cErrorHandler(transaction);
+    return false;
+  }
+
+  startTick = xTaskGetTickCount();
+  while (!g_i2cTransferDone) {
+    if ((xTaskGetTickCount() - startTick) >= timeoutTicks) {
+      SEGGER_RTT_printf(0, "I2C callback wait timed out after %u ms\n",
+                        (unsigned)I2C_TRANSFER_WAIT_MS);
+      return false;
+    }
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+
+  if (!g_i2cTransferStatus) {
+    if (transaction != NULL) {
+      i2cErrorHandler(transaction);
+    }
+    return false;
+  }
+
+  return true;
+}
 
 static bool i2cWriteReg8(uint8_t targetAddress, uint8_t* txBuf,
                          size_t txBufSize, uint8_t reg, uint8_t value) {
@@ -36,8 +99,7 @@ static bool i2cWriteReg8(uint8_t targetAddress, uint8_t* txBuf,
   i2cTransaction.readCount = 0;
   i2cTransaction.targetAddress = targetAddress;
 
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
-    i2cErrorHandler(&i2cTransaction);
+  if (!i2cTransferAndWait(&i2cTransaction)) {
     return false;
   }
   return true;
@@ -59,8 +121,7 @@ static bool i2cReadReg8(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
   i2cTransaction.readCount = 1;
   i2cTransaction.targetAddress = targetAddress;
 
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
-    i2cErrorHandler(&i2cTransaction);
+  if (!i2cTransferAndWait(&i2cTransaction)) {
     return false;
   }
   *value = rxBuf[0];
@@ -83,8 +144,7 @@ static bool i2cReadRegN(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
   i2cTransaction.readCount = (uint16_t)outLen;
   i2cTransaction.targetAddress = targetAddress;
 
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
-    i2cErrorHandler(&i2cTransaction);
+  if (!i2cTransferAndWait(&i2cTransaction)) {
     return false;
   }
 
@@ -134,6 +194,8 @@ static void i2cErrorHandler(I2C_Transaction* transaction) {
 bool nsa2300Init() {
   I2C_Params_init(&g_i2cParams);
   g_i2cParams.bitRate = I2C_400kHz;
+  g_i2cParams.transferMode = I2C_MODE_CALLBACK;
+  g_i2cParams.transferCallbackFxn = i2cTransferCallback;
   g_i2cHandle = I2C_open(CONFIG_I2C_0, &g_i2cParams);
   if (g_i2cHandle == NULL) {
     SEGGER_RTT_printf(0, "NSA2300: Error initializing I2C\n");

@@ -105,27 +105,12 @@ void *payloadManagerThread(void *arg0) {
             pt100Raw = 0;
         }
 
-        /* Wait briefly for the I2C bus to be quiet before becoming master.
-         * If an external controller is actively polling the target, attempting
-         * to use the same I2C peripheral as master can deadlock or fail.
+        /* I2C target service is on I2C0 while NSA2300 controller access is on
+         * I2C1, so there is no need to wait for the target-side IRQ counter to
+         * become idle before starting a controller-side measurement.
+         * Pause target service only for the short controller transaction window.
          */
-        SEGGER_RTT_printf(0, "PM: waiting for I2C bus quiet before NSA2300 start\n");
-        uint32_t prevIrq = I2C_getIrqCount();
-        bool busQuiet = false;
-        for (int w = 0; w < 10; ++w) {
-            vTaskDelay(pdMS_TO_TICKS(10));
-            uint32_t cur = I2C_getIrqCount();
-            if (cur == prevIrq) {
-                busQuiet = true;
-                break;
-            }
-            prevIrq = cur;
-        }
-        if (!busQuiet) {
-            SEGGER_RTT_printf(0, "PM: I2C bus busy; skipping NSA2300 measurement this cycle\n");
-            continue;
-        }
-
+        SEGGER_RTT_printf(0, "PM: pausing I2C target service before NSA2300 start\n");
         I2CTarget_pauseService();
         targetPaused = true;
 
@@ -171,11 +156,22 @@ void *payloadManagerThread(void *arg0) {
                     if (hddI2CReadReady(&ready)) {
                         SEGGER_RTT_printf(0, "HDD I2C Ready: 0x%02x\n", (unsigned)ready);
                         if (ready != 0) {
+                            uint8_t childLen = ready;
+                            const uint8_t maxChildLen = (uint8_t)(sizeof(dataBuffer) - payloadLen);
+
+                            if (childLen > maxChildLen) {
+                                SEGGER_RTT_printf(0,
+                                                  "HDD I2C Ready length %u invalid for local buffer limit %u; skipping child read this cycle\n",
+                                                  (unsigned)ready,
+                                                  (unsigned)maxChildLen);
+                                usleep(1000);
+                                continue;
+                            }
+
                             SEGGER_RTT_printf(0, "HDD I2C Read Ready indicates data ready\n");
-                            if (hddI2CReadData(dataBuffer + payloadLen, ready)) {
-                                SEGGER_RTT_printf(0, "HDD I2C Read Data of %u bytes succeeded\n", (unsigned)ready);
-                                updatePayloadData(dataBuffer, payloadLen + ready);
-                                readyToPublish = (uint8_t)(payloadLen + ready);
+                            if (hddI2CReadData(dataBuffer + payloadLen, childLen)) {
+                                SEGGER_RTT_printf(0, "HDD I2C Read Data of %u bytes succeeded\n", (unsigned)childLen);
+                                readyToPublish = (uint8_t)(payloadLen + childLen);
                                 if (hddI2CWriteReady(0)) {
                                     SEGGER_RTT_printf(0, "HDD I2C Write Ready 0 succeeded\n");
                                 } else {
@@ -209,15 +205,14 @@ void *payloadManagerThread(void *arg0) {
         }
 
         /* Publish latest completed payload and then expose true size via 0x81 */
-        if (readyToPublish == payloadLen) {
-            updatePayloadData(dataBuffer, payloadLen);
-            // print all data in payload for debug
-            SEGGER_RTT_printf(0, "Published Payload Data (%u bytes):", (unsigned)payloadLen);
-            for (uint8_t i = 0; i < payloadLen; i++) {
-                SEGGER_RTT_printf(0, " %02x", dataBuffer[i]);
-            }
-            SEGGER_RTT_printf(0, "\n");
+        updatePayloadData(dataBuffer, readyToPublish);
+        // print all data in payload for debug
+        SEGGER_RTT_printf(0, "Published Payload Data (%u bytes):", (unsigned)readyToPublish);
+        for (uint8_t i = 0; i < readyToPublish; i++) {
+            SEGGER_RTT_printf(0, " %02x", dataBuffer[i]);
         }
+        SEGGER_RTT_printf(0, "\n");
+
         updateReady(readyToPublish);
     }
 }

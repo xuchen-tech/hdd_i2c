@@ -69,8 +69,8 @@
  */
 #define HDD_I2C_TARGET_ISR_LOG 0
 
-static volatile uint8_t g_regMode = 0x00;  /* reg 0x80: Mode */
-static volatile uint8_t g_regReady = 0x00; /* reg 0x81: Ready */
+static volatile uint8_t g_regMode = 0xD1;  /* reg 0x80: Mode */
+static volatile uint8_t g_regReady = 0x08; /* reg 0x81: Ready */
 static volatile uint8_t g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}; /* reg 0x82: Data */
 static volatile uint8_t g_errorCode = 0x00;      /* reg 0x83: Error Code */
@@ -270,7 +270,7 @@ void I2C0_IRQHandler(void)
               gTxPacket[gTxCount++] = gTxResponseByte;
             }
           } else if (gLastRegAddr == REG_READY_0x81) {
-            gTxResponseByte = 0x08;
+            gTxResponseByte = g_regReady;
             DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
             if (gTxCount < gTxLen) {
               gTxPacket[gTxCount++] = gTxResponseByte;
@@ -335,15 +335,24 @@ void I2C0_IRQHandler(void)
 
     case DL_I2C_IIDX_TARGET_TX_DONE:
       gI2cTxDoneCount++;
+      if ((gLastRegAddr == REG_DATA_0x82) &&
+          (gI2cTxDoneCount >= 7u) &&
+          (gReg82TxCount < reg82SnapshotLen)) {
+        size_t remaining = (size_t)(reg82SnapshotLen - gReg82TxCount);
+        size_t chunkLen = (remaining > 8u) ? 8u : remaining;
+
+        wrote = DL_I2C_fillTargetTXFIFO(
+            I2C0_INST,
+            (void *)&payloadBuf[reg82SnapshotIndex][gReg82TxCount], chunkLen);
+        gReg82TxCount = (uint8_t)(gReg82TxCount + (uint8_t)wrote);
+        gI2cTxDoneCount = 0;
+        break;
+      }
       /* Read transaction completed, clear parser context for next frame */
       gRxCount = 0;
       gLastRegAddr = 0x00;
       gReg82TxCount = 0;
       regPointerLatched = false;
-      // if (gI2cTxDoneCount == 7) {
-      //   DL_I2C_fillTargetTXFIFO(I2C0_INST,
-      //                       (void*)&payloadBuf[reg82SnapshotIndex][gReg82TxCount], 8);
-      // }
       break;
 
     case DL_I2C_IIDX_TARGET_STOP:

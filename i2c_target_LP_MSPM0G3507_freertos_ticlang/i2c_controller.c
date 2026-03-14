@@ -74,6 +74,12 @@ static bool i2cRecoverController(void) {
 
 static bool i2cTransferAndWait(I2C_Transaction* transaction) {
   const TickType_t timeoutTicks = pdMS_TO_TICKS(I2C_TRANSFER_WAIT_MS);
+  const void* const originalWriteBuf = transaction != NULL ? transaction->writeBuf : NULL;
+  const size_t originalWriteCount = transaction != NULL ? transaction->writeCount : 0u;
+  void* const originalReadBuf = transaction != NULL ? transaction->readBuf : NULL;
+  const size_t originalReadCount = transaction != NULL ? transaction->readCount : 0u;
+  const uint_least8_t originalTargetAddress =
+      transaction != NULL ? transaction->targetAddress : 0u;
 
   if (transaction == NULL || g_i2cHandle == NULL) {
     return false;
@@ -81,6 +87,13 @@ static bool i2cTransferAndWait(I2C_Transaction* transaction) {
 
   for (uint32_t attempt = 0; attempt < I2C_TRANSFER_MAX_ATTEMPTS; ++attempt) {
     TickType_t startTick;
+
+    memset(transaction, 0, sizeof(*transaction));
+    transaction->writeBuf = (void*)originalWriteBuf;
+    transaction->writeCount = originalWriteCount;
+    transaction->readBuf = originalReadBuf;
+    transaction->readCount = originalReadCount;
+    transaction->targetAddress = originalTargetAddress;
 
     g_i2cTransferDone = false;
     g_i2cTransferStatus = false;
@@ -129,7 +142,7 @@ retry_transfer:
 
 static bool i2cWriteReg8(uint8_t targetAddress, uint8_t* txBuf,
                          size_t txBufSize, uint8_t reg, uint8_t value) {
-  I2C_Transaction i2cTransaction;
+  I2C_Transaction i2cTransaction = {0};
   if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 2) {
     return false;
   }
@@ -152,7 +165,7 @@ static bool i2cWriteReg8(uint8_t targetAddress, uint8_t* txBuf,
 static bool i2cReadReg8(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
                         uint8_t* rxBuf, size_t rxBufSize, uint8_t reg,
                         uint8_t* value) {
-  I2C_Transaction i2cTransaction;
+  I2C_Transaction i2cTransaction = {0};
   if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
       rxBufSize < 1 || value == NULL) {
     return false;
@@ -175,7 +188,7 @@ static bool i2cReadReg8(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
 static bool i2cReadRegN(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
                         uint8_t* rxBuf, size_t rxBufSize, uint8_t startReg,
                         uint8_t* out, size_t outLen) {
-  I2C_Transaction i2cTransaction;
+  I2C_Transaction i2cTransaction = {0};
   if (g_i2cHandle == NULL || txBuf == NULL || txBufSize < 1 || rxBuf == NULL ||
       rxBufSize < outLen || out == NULL) {
     return false;

@@ -70,34 +70,34 @@
 #define HDD_I2C_TARGET_ISR_LOG 0
 
 static volatile uint8_t g_regMode = 0xD1;  /* reg 0x80: Mode */
-static volatile uint8_t g_regReady = 0x08; /* reg 0x81: Ready */
+static volatile uint8_t g_regReady = 0x8; /* reg 0x81: Ready */
 static volatile uint8_t g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}; /* reg 0x82: Data */
 static volatile uint8_t g_errorCode = 0x00;      /* reg 0x83: Error Code */
 
 static volatile uint8_t payloadBuf[2][READY_PAYLOAD_MAX_LEN_BYTES] = {
-  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B},
+  {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xCA},
   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}
 };
-static volatile uint8_t payloadLen[2] = {8, 8};
 static volatile uint8_t activeIndex = 0;
 static volatile uint8_t reg82SnapshotIndex;
 static volatile uint8_t reg82SnapshotLen;
 
 volatile size_t wrote = 0;
 
-void updateReady(uint8_t ready) { g_regReady = ready; }
+#define I2C_TARGET_TX_FIFO_CHUNK_SIZE 8u
+
 void updatePayloadData(uint8_t* data, uint8_t len) {
   if (len > READY_PAYLOAD_MAX_LEN_BYTES) {
     len = READY_PAYLOAD_MAX_LEN_BYTES;
   }
-  /* Write into inactive buffer, then publish by atomically swapping active index. */
   uint8_t inactive = (uint8_t)(activeIndex ^ 1);
+  /* Write into inactive buffer, then publish by atomically swapping active index. */
   memcpy((void*)payloadBuf[inactive], (const void*)data, len);
 
   /* publish length and swap active index atomically */
-  taskENTER_CRITICAL();
-  payloadLen[inactive] = (uint8_t)len;
+  taskENTER_CRITICAL();  
+  g_regReady = (uint8_t)len;
   activeIndex = inactive;
   taskEXIT_CRITICAL();
 }
@@ -131,6 +131,22 @@ static volatile uint8_t gTxResponseByte = 0xA5;
 static volatile uint8_t gReg82TxCount = 0;
 static volatile uint32_t gI2cPauseDepth = 0;
 
+static void i2cTargetLoadReg82Chunk(void) {
+  if (gReg82TxCount >= reg82SnapshotLen) {
+    return;
+  }
+
+  size_t remaining = (size_t)(reg82SnapshotLen - gReg82TxCount);
+  size_t chunkLen =
+      (remaining > I2C_TARGET_TX_FIFO_CHUNK_SIZE)
+          ? I2C_TARGET_TX_FIFO_CHUNK_SIZE
+          : remaining;
+
+  wrote = DL_I2C_fillTargetTXFIFO(
+      I2C0_INST, (void *)&payloadBuf[reg82SnapshotIndex][gReg82TxCount],
+      chunkLen);
+  gReg82TxCount = (uint8_t)(gReg82TxCount + (uint8_t)wrote);
+}
 /* Log task prototype */
 static void i2cLogTask(void *pvParameters);
 
@@ -237,15 +253,16 @@ void I2C0_IRQHandler(void)
     case DL_I2C_IIDX_TARGET_START:
       gI2cStartCount++;
       /* Start of a transfer phase.
-       * Keep TX FIFO intact here because repeated-start READ depends on the
-       * response byte preloaded right after register pointer write. */
+       * Keep TX FIFO and current register context intact here because a
+       * repeated-start READ follows the register-pointer write phase.
+       * Clearing `gLastRegAddr` / `gReg82TxCount` here truncates multi-block
+       * reads after the first FIFO chunk. Fresh transactions are already
+       * reset by STOP/TX_DONE cleanup.
+       */
       dataRx = false;
       regPointerLatched = false;
       gRxCount = 0;
       gTxCount = 0;
-      gReg82TxCount = 0;
-      gLastRegAddr = 0x00;
-      gTxResponseByte = 0x00;
       /* no printing from ISR */
       break;
 
@@ -265,13 +282,13 @@ void I2C0_IRQHandler(void)
 
           if (gLastRegAddr == REG_MODE_0x80) {
             gTxResponseByte = g_regMode;
-            DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
+            DL_I2C_fillTargetTXFIFO(I2C0_INST, (void *)&g_regMode, 1);
             if (gTxCount < gTxLen) {
               gTxPacket[gTxCount++] = gTxResponseByte;
             }
           } else if (gLastRegAddr == REG_READY_0x81) {
             gTxResponseByte = g_regReady;
-            DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
+            DL_I2C_fillTargetTXFIFO(I2C0_INST, (void *)&g_regReady, 1);
             if (gTxCount < gTxLen) {
               gTxPacket[gTxCount++] = gTxResponseByte;
             }
@@ -279,12 +296,8 @@ void I2C0_IRQHandler(void)
             gReg82TxCount = 0;
             gI2cTxDoneCount = 0;
             reg82SnapshotIndex = activeIndex;
-            reg82SnapshotLen = payloadLen[reg82SnapshotIndex];
-
-            size_t remaining = payloadLen[reg82SnapshotIndex];
-            wrote = DL_I2C_fillTargetTXFIFO(I2C0_INST,
-                            (void*)&payloadBuf[reg82SnapshotIndex][gReg82TxCount], 8);
-            gReg82TxCount += (uint8_t)wrote;
+            reg82SnapshotLen = g_regReady;
+            i2cTargetLoadReg82Chunk();
           } else {
             gTxResponseByte = 0x00;
             DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
@@ -308,7 +321,7 @@ void I2C0_IRQHandler(void)
               PayloadManager_requestSampleFromISR();
             }
           } else if ((gRxCount == 2) && (gLastRegAddr == REG_READY_0x81)) {
-            g_regReady = data;
+            // g_regReady = data;
             gTxResponseByte = g_regReady;
           }
         } else {
@@ -325,34 +338,21 @@ void I2C0_IRQHandler(void)
         }
       }
 
-      if (i2cLogTaskHandle != NULL) {
-        vTaskNotifyGiveFromISR(i2cLogTaskHandle, &xHigherPriorityTaskWoken);
-      }
       break;
 
     case DL_I2C_IIDX_TARGET_TXFIFO_TRIGGER:
+      gI2cTxTrigCount++;
+      if (gLastRegAddr == REG_DATA_0x82) {
+        i2cTargetLoadReg82Chunk();
+      }
       break;
 
     case DL_I2C_IIDX_TARGET_TX_DONE:
       gI2cTxDoneCount++;
-      if ((gLastRegAddr == REG_DATA_0x82) &&
-          (gI2cTxDoneCount >= 7u) &&
-          (gReg82TxCount < reg82SnapshotLen)) {
-        size_t remaining = (size_t)(reg82SnapshotLen - gReg82TxCount);
-        size_t chunkLen = (remaining > 8u) ? 8u : remaining;
-
-        wrote = DL_I2C_fillTargetTXFIFO(
-            I2C0_INST,
-            (void *)&payloadBuf[reg82SnapshotIndex][gReg82TxCount], chunkLen);
-        gReg82TxCount = (uint8_t)(gReg82TxCount + (uint8_t)wrote);
-        gI2cTxDoneCount = 0;
-        break;
-      }
-      /* Read transaction completed, clear parser context for next frame */
-      gRxCount = 0;
-      gLastRegAddr = 0x00;
-      gReg82TxCount = 0;
-      regPointerLatched = false;
+      /* Keep transaction state until STOP so multi-chunk REG_DATA_0x82 reads
+       * can continue refilling the TX FIFO. Clearing here truncates reads
+       * after the first 8-byte chunk.
+       */
       break;
 
     case DL_I2C_IIDX_TARGET_STOP:
@@ -381,7 +381,6 @@ void I2C0_IRQHandler(void)
       break;
   }
 
-  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 /* Background task: drain ring buffer and print logs (runs in task context) */
@@ -397,7 +396,6 @@ static void i2cLogTask(void *pvParameters)
     while (i2cLogTail != i2cLogHead) {
       uint8_t data = i2cLogRing[i2cLogTail];
       i2cLogTail = (i2cLogTail + 1) & (I2C_LOG_RING_SIZE - 1);
-      SEGGER_RTT_printf(0, "I2C0_data: %02x\n", data);
     }
   }
 }

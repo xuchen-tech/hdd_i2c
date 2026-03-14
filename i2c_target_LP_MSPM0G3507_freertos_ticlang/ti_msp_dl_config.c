@@ -114,7 +114,7 @@ void SYSCFG_DL_I2C_init(void)
 
     /* Configure Target Mode */
     DL_I2C_setTargetOwnAddress(I2C0_INST, 0x50);
-    DL_I2C_setTargetTXFIFOThreshold(I2C0_INST, DL_I2C_TX_FIFO_LEVEL_BYTES_1);
+    DL_I2C_setTargetTXFIFOThreshold(I2C0_INST, DL_I2C_TX_FIFO_LEVEL_BYTES_4);
     DL_I2C_setTargetRXFIFOThreshold(I2C0_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_1);
     DL_I2C_enableTargetTXEmptyOnTXRequest(I2C0_INST);
 

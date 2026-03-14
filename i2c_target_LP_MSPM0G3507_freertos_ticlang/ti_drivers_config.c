@@ -221,7 +221,7 @@ const I2CMSPM0_HWAttrs I2CMSPM0HWAttrs[CONFIG_I2C_COUNT] = {
     {
         .i2c         = I2C1_INST,
         .intNum      = I2C1_INST_INT_IRQN,
-        .intPriority = (~0),
+        .intPriority = (1 << 6),
 
         .sdaPincm    = GPIO_I2C1_IOMUX_SDA,
         .sdaPinIndex = GPIO_I2C1_SDA_PIN,

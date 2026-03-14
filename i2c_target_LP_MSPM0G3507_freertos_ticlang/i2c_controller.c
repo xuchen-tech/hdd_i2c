@@ -251,7 +251,7 @@ static void i2cErrorHandler(I2C_Transaction* transaction) {
 
 bool nsa2300Init() {
   I2C_Params_init(&g_i2cParams);
-  g_i2cParams.bitRate = I2C_400kHz;
+  g_i2cParams.bitRate = I2C_100kHz;
   g_i2cParams.transferMode = I2C_MODE_CALLBACK;
   g_i2cParams.transferCallbackFxn = i2cTransferCallback;
   g_i2cHandle = I2C_open(CONFIG_I2C_0, &g_i2cParams);

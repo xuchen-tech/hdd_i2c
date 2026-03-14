@@ -67,7 +67,7 @@ void *payloadManagerThread(void *arg0) {
     uint16_t pt100Raw;
     uint8_t dataBuffer[BUFFER_SIZE] = {0};
     uint8_t mode = 0, ready = 0;
-
+    uint8_t nas2300_init_attempts = 10;
     (void)arg0;
 
     /* Capture task handle so ISR-side code can notify us */
@@ -79,22 +79,17 @@ void *payloadManagerThread(void *arg0) {
         SEGGER_RTT_printf(0, "Payload Manager thread: pt100Init failed\n");
         return NULL;
     }
-    ret = nsa2300Init();
-    if (ret == false) {
-        SEGGER_RTT_printf(0, "Payload Manager thread: nas2300Init failed\n");
-        return NULL;
+    for (uint8_t i = 0; i < nas2300_init_attempts; i++) {
+        ret = nsa2300Init();
+        if (ret == true) {
+            break;
+        }
+        SEGGER_RTT_printf(0, "Payload Manager thread: nsa2300Init attempt %u failed\n", (unsigned)(i + 1));
+        usleep(200000);
     }
 
     while (1) {
         uint8_t readyToPublish = 0u;
-        bool targetPaused = false;
-        /* Periodic update; ISR notification can wake this earlier. */
-        (void)ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(PAYLOAD_UPDATE_PERIOD_MS));
-
-        /* Mark payload as busy-updating so master reads 0x81 = 0 */
-        updateReady(0u);
-
-        SEGGER_RTT_printf(0, "PM: loop start - notified, sampling...\n");
 
         SEGGER_RTT_printf(0, "PM: before pt100ReadTemperature_x10\n");
         ret = pt100ReadTemperature_x10(&pt100Raw);
@@ -111,21 +106,15 @@ void *payloadManagerThread(void *arg0) {
          * Pause target service only for the short controller transaction window.
          */
         SEGGER_RTT_printf(0, "PM: pausing I2C target service before NSA2300 start\n");
-        I2CTarget_pauseService();
-        targetPaused = true;
 
         SEGGER_RTT_printf(0, "PM: before nsa2300StartMeasurement\n");
         if (!nsa2300StartMeasurement()) {
             SEGGER_RTT_printf(0, "PM: nsa2300StartMeasurement FAILED\n");
-            I2CTarget_resumeService();
-            targetPaused = false;
             continue;
         }
         SEGGER_RTT_printf(0, "PM: before nsa2300WaitForDataReady\n");
         if (!nsa2300WaitForDataReady()) {
             SEGGER_RTT_printf(0, "PM: nsa2300WaitForDataReady FAILED\n");
-            I2CTarget_resumeService();
-            targetPaused = false;
             continue;
         }
 
@@ -135,8 +124,6 @@ void *payloadManagerThread(void *arg0) {
             SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureRaw24Single OK: %u, 0x:%x\n", pressureRaw24, pressureRaw24);
         } else {
             SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureRaw24Single FAILED\n");
-            I2CTarget_resumeService();
-            targetPaused = false;
             continue;
         }
 
@@ -192,16 +179,10 @@ void *payloadManagerThread(void *arg0) {
                 }
             } else {
                 SEGGER_RTT_printf(0, "HDD I2C Write Mode D1 failed\n");
-                I2CTarget_resumeService();
             }
         } else {
             SEGGER_RTT_printf(0, "HDD I2C Read Mode failed\n"); // this indicate has no conntectted device
             readyToPublish = payloadLen;
-        }
-
-        if (targetPaused) {
-            I2CTarget_resumeService();
-            targetPaused = false;
         }
 
         /* Publish latest completed payload and then expose true size via 0x81 */
@@ -212,7 +193,6 @@ void *payloadManagerThread(void *arg0) {
             SEGGER_RTT_printf(0, " %02x", dataBuffer[i]);
         }
         SEGGER_RTT_printf(0, "\n");
-
-        updateReady(readyToPublish);
+        usleep(100000);
     }
 }

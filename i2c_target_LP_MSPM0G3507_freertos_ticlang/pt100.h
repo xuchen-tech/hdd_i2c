@@ -15,9 +15,9 @@ extern "C" {
 #endif
 
 /*
- * PT100 frontend assumptions (defaults; override at compile time if needed):
+ * PT1000 frontend assumptions (defaults; override at compile time if needed):
  * - Rpullup from VCC to divider node
- * - PT100 from divider node to GND
+ * - PT1000 from divider node to GND
  * - Optional non-inverting amplifier on the divider node
  */
 #ifndef PT100_VCC_UV
@@ -25,23 +25,35 @@ extern "C" {
 #endif
 
 #ifndef PT100_PULLUP_OHMS
-#define PT100_PULLUP_OHMS (3300.0)
+#define PT100_PULLUP_OHMS (33000.0)
 #endif
 
 #ifndef PT100_AMP_GAIN
 #define PT100_AMP_GAIN (11.0)
 #endif
 
-/*  pt100 initialize */
-bool pt100Init(void);
-/*  pt100 de-initialize */
-bool pt100Deinit(void);
-/*  pt100 16bit raw data read */
-bool pt100ReadRaw(uint16_t* rawData);
-/*  pt100 32bit MicroVolts  */
-bool pt100ReadMicroVolts(uint32_t* microVolts);
-/*  pt100 temperature in 0.1C units */
-bool pt100ReadTemperature_x10(int16_t* temp_x10);
+#ifndef PT100_R0_OHMS
+#define PT100_R0_OHMS (1000.0)
+#endif
+
+#ifndef PT100_TEMP_MIN_C
+#define PT100_TEMP_MIN_C (-70.0)
+#endif
+
+#ifndef PT100_TEMP_MAX_C
+#define PT100_TEMP_MAX_C (200.0)
+#endif
+
+/*  PT1000 initialize */
+bool pt1000Init(void);
+/*  PT1000 de-initialize */
+bool pt1000Deinit(void);
+/*  PT1000 16-bit raw data read */
+bool pt1000ReadRaw(uint16_t* rawData);
+/*  PT1000 32-bit microvolt read */
+bool pt1000ReadMicroVolts(uint32_t* microVolts);
+/*  PT1000 temperature in 0.1C units */
+bool pt1000ReadTemperature_x10(int16_t* temp_x10);
 #ifdef __cplusplus
 }
 #endif

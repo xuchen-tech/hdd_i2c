@@ -8,7 +8,7 @@
 #define REG_READY_0x81 0x81
 #define REG_DATA_0x82 0x82
 
-/*  PT100 definition    */
+/*  PT1000 definition    */
 typedef struct {
   double vcc_uV;
   double pullup_ohms;

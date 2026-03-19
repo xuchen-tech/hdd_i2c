@@ -74,9 +74,9 @@ void *payloadManagerThread(void *arg0) {
     g_payloadManagerTaskHandle = xTaskGetCurrentTaskHandle();
 
     memset(dataBuffer, 0, sizeof(dataBuffer));
-    ret = pt100Init();
+    ret = pt1000Init();
     if (ret == false) {
-        SEGGER_RTT_printf(0, "Payload Manager thread: pt100Init failed\n");
+        SEGGER_RTT_printf(0, "Payload Manager thread: pt1000Init failed\n");
         return NULL;
     }
     for (uint8_t i = 0; i < nas2300_init_attempts; i++) {
@@ -91,12 +91,12 @@ void *payloadManagerThread(void *arg0) {
     while (1) {
         uint8_t readyToPublish = 0u;
 
-        SEGGER_RTT_printf(0, "PM: before pt100ReadTemperature_x10\n");
-        ret = pt100ReadTemperature_x10(&pt100Raw);
+        SEGGER_RTT_printf(0, "PM: before pt1000ReadTemperature_x10\n");
+        ret = pt1000ReadTemperature_x10(&pt100Raw);
         if (ret == true) {
-            SEGGER_RTT_printf(0, "PM: pt100ReadTemperature_x10 OK, raw=%u\n", (uint16_t)pt100Raw);
+            SEGGER_RTT_printf(0, "PM: pt1000ReadTemperature_x10 OK, temp=%u\n", (uint16_t)pt100Raw);
         } else {
-            SEGGER_RTT_printf(0, "PM: pt100ReadTemperature_x10 FAILED\n");
+            SEGGER_RTT_printf(0, "PM: pt1000ReadTemperature_x10 FAILED\n");
             pt100Raw = 0;
         }
 

@@ -92,7 +92,7 @@ int main(void)
     I2C_init();
     ADC_init();
 
-    hddI2CCalibrationInit();
+    // hddI2CCalibrationInit();
     SEGGER_RTT_printf(0, "Starting the segger rtt logger\n");
 
     /* payloadManagerThread: lower priority, larger stack */

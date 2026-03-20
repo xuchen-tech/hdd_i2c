@@ -7,6 +7,7 @@
 #define REG_MODE_0x80 0x80
 #define REG_READY_0x81 0x81
 #define REG_DATA_0x82 0x82
+#define REG_CALIBRATION_0x83 0x83
 
 /*  PT1000 definition    */
 typedef struct {

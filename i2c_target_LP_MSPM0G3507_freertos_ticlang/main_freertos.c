@@ -59,6 +59,8 @@ extern void *mainThread(void *arg0);
 extern void *i2cControllerThread(void *arg0);
 extern void *pt100Thread(void *arg0);
 extern void *payloadManagerThread(void *arg0);
+extern uint32_t calibration_low;
+extern uint32_t calibration_high;
 
 /* Stack size in bytes */
 #define MAIN_THREADSTACKSIZE    (1024)
@@ -92,8 +94,9 @@ int main(void)
     I2C_init();
     ADC_init();
 
-    // hddI2CCalibrationInit();
     SEGGER_RTT_printf(0, "Starting the segger rtt logger\n");
+    hddI2CReadCalibrationData(&calibration_low, &calibration_high);
+    nsa2300SetCalibration(calibration_low, calibration_high);
 
     /* payloadManagerThread: lower priority, larger stack */
     pthread_attr_init(&attrsPayload);

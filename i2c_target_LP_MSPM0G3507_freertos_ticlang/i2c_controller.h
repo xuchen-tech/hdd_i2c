@@ -31,6 +31,12 @@ bool nsa2300WaitForDataReady();
 /* Read single 24-bit pressure value */
 bool nsa2300ReadPressureRaw24Single(uint32_t* p24);
 
+/* Two-point calibration: provide raw reading for 0 kg and for 3000 kg */
+bool nsa2300SetCalibration(uint32_t raw_zero_kg, uint32_t raw_full_3000kg);
+/* Convert raw reading to kilograms * 10 (kg_x10). Returns false if not calibrated. */
+/* Convert raw reading to kilograms as integer (kg). Returns false if not calibrated. */
+bool nsa2300RawToKg(uint32_t raw, int32_t *kg);
+
 bool hddI2CWriteReg8(uint8_t* txBuf, size_t txBufSize, uint8_t reg,
                      uint8_t value);
 bool hddI2CReadReg8(uint8_t* txBuf, size_t txBufSize, uint8_t* rxBuf,

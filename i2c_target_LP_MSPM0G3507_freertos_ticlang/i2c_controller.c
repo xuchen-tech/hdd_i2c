@@ -17,6 +17,11 @@
 /* Driver configuration */
 #include "ti_drivers_config.h"
 
+uint32_t calibration_low = 0;
+uint32_t calibration_high = 0;
+/* calibration_valid indicates whether calibration_low/high contain a valid pair */
+static volatile bool calibration_valid = false;
+
 static uint8_t txBuffer[BUFFER_SIZE];
 static uint8_t rxBuffer[BUFFER_SIZE];
 
@@ -251,7 +256,7 @@ static void i2cErrorHandler(I2C_Transaction* transaction) {
 
 bool nsa2300Init() {
   I2C_Params_init(&g_i2cParams);
-  g_i2cParams.bitRate = I2C_100kHz;
+  g_i2cParams.bitRate = I2C_400kHz;
   g_i2cParams.transferMode = I2C_MODE_CALLBACK;
   g_i2cParams.transferCallbackFxn = i2cTransferCallback;
   g_i2cHandle = I2C_open(CONFIG_I2C_0, &g_i2cParams);
@@ -361,6 +366,7 @@ bool nsa2300ReadPressureRaw24Single(uint32_t* p24) {
   }
 
   *p24 = ((uint32_t)raw[0] << 16) | ((uint32_t)raw[1] << 8) | (uint32_t)raw[2];
+  
   return true;
 }
 
@@ -428,5 +434,45 @@ bool hddI2CWriteReady(uint8_t ready) {
     SEGGER_RTT_printf(0, "HDD: Failed to write ready register\n");
     return false;
   }
+  return true;
+}
+
+bool nsa2300SetCalibration(uint32_t raw_zero_kg, uint32_t raw_full_3000kg) {
+  if (raw_full_3000kg == raw_zero_kg) {
+    SEGGER_RTT_printf(0, "NSA2300: invalid calibration (identical points)\n");
+    return false;
+  }
+  calibration_low = raw_zero_kg;
+  calibration_high = raw_full_3000kg;
+  calibration_valid = true;
+  SEGGER_RTT_printf(0, "NSA2300: calibration set: zero=0x%06X full=0x%06X\n",
+                    (unsigned)calibration_low, (unsigned)calibration_high);
+  return true;
+}
+
+bool nsa2300RawToKg(uint32_t raw, int32_t *kg) {
+  if (!calibration_valid || kg == NULL) {
+    return false;
+  }
+
+  /* Compute fraction = (raw - low) / (high - low), as double for precision. */
+  double low = (double)calibration_low;
+  double high = (double)calibration_high;
+  double r = (double)raw;
+  double frac = (r - low) / (high - low);
+
+  /* Clamp 0..1 */
+  if (frac < 0.0)
+    frac = 0.0;
+  if (frac > 1.0)
+    frac = 1.0;
+
+  /* Map to 0..3000 kg, return integer kg (rounded) */
+  double kgd = frac * 3000.0;
+  int32_t out = (int32_t)lround(kgd);
+  *kg = out;
+
+  SEGGER_RTT_printf(0, "NSA2300: raw=0x%06X frac=%.4f kg=%ld\n",
+                    (unsigned)raw, frac, (long)out);
   return true;
 }

@@ -52,6 +52,7 @@
 
 #include "hdd_i2c_config.h"
 #include "hdd_i2c_payload_manager.h"
+#include "hdd_i2c_calibraton.h"
 #include "i2c_controller.h"
 #include "pt100.h"
 
@@ -74,6 +75,10 @@ static volatile uint8_t g_regReady = 0x8; /* reg 0x81: Ready */
 static volatile uint8_t g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}; /* reg 0x82: Data */
 static volatile uint8_t g_errorCode = 0x00;      /* reg 0x83: Error Code */
+/* Calibration write: ISR stores 8 received bytes here and sets pending flag; 
+ * mainThread will perform the flash write in task context. */
+static volatile uint8_t gCalibrationBuf[8];
+static volatile bool gCalibrationPending = false;
 
 static volatile uint8_t payloadBuf[2][READY_PAYLOAD_MAX_LEN_BYTES] = {
   {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xCA},
@@ -114,6 +119,8 @@ static volatile uint8_t i2cLogRing[I2C_LOG_RING_SIZE];
 static volatile uint32_t i2cLogHead = 0; /* written by ISR */
 static volatile uint32_t i2cLogTail = 0; /* read by task */
 static TaskHandle_t i2cLogTaskHandle = NULL;
+static TaskHandle_t calibrationTaskHandle = NULL;
+static volatile uint32_t gCalibrationNotifyCount = 0;
 
 /* IRQ diagnostics */
 static volatile uint32_t gI2cIrqCount = 0;
@@ -149,6 +156,7 @@ static void i2cTargetLoadReg82Chunk(void) {
 }
 /* Log task prototype */
 static void i2cLogTask(void *pvParameters);
+static void calibrationTask(void *pvParameters);
 
 /* Expose a small accessor so other tasks can detect heavy I2C activity. */
 uint32_t I2C_getIrqCount(void) {
@@ -220,7 +228,18 @@ void* mainThread(void* arg0) {
    * (uses blocking / potentially slow calls like SEGGER_RTT_printf)
    * Create the task before enabling the NVIC so the ISR can safely notify
    * the task without racing on the handle being NULL. */
-  xTaskCreate(i2cLogTask, "I2CLog", 256, NULL, 1, &i2cLogTaskHandle);
+  if (xTaskCreate(i2cLogTask, "I2CLog", 256, NULL, 1, &i2cLogTaskHandle) != pdPASS) {
+    SEGGER_RTT_printf(0, "I2CTarget: failed to create i2cLogTask\n");
+  }
+  /* Create calibration task using static allocation to avoid heap exhaustion */
+  static StaticTask_t calibrationTaskTCB;
+  static StackType_t calibrationTaskStack[192];
+  calibrationTaskHandle = xTaskCreateStatic(
+      calibrationTask, "Calib", (uint32_t)(sizeof(calibrationTaskStack) / sizeof(StackType_t)),
+      NULL, 1, calibrationTaskStack, &calibrationTaskTCB);
+  if (calibrationTaskHandle == NULL) {
+    SEGGER_RTT_printf(0, "I2CTarget: failed to create calibrationTask (static)\n");
+  }
 
   /* Now enable the I2C IRQ */
   NVIC_EnableIRQ(I2C0_INT_IRQn);
@@ -298,6 +317,11 @@ void I2C0_IRQHandler(void)
             reg82SnapshotIndex = activeIndex;
             reg82SnapshotLen = g_regReady;
             i2cTargetLoadReg82Chunk();
+          } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
+            /* Calibration region: master will write 8 bytes after register
+             * pointer. Defer flash/program work to task context; in ISR just
+             * capture bytes and set pending flag. */
+            /* nothing to preload for read */
           } else {
             gTxResponseByte = 0x00;
             DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
@@ -311,7 +335,7 @@ void I2C0_IRQHandler(void)
         if (gRxCount < gRxLen) {
           gRxPacket[gRxCount++] = data;
 
-          /* Handle register write: [regAddr, value] */
+          /* Handle register write: [regAddr, ...data...] */
           if ((gRxCount == 2) && (gLastRegAddr == REG_MODE_0x80)) {
             const uint8_t prevMode = g_regMode;
             g_regMode = data;
@@ -323,6 +347,21 @@ void I2C0_IRQHandler(void)
           } else if ((gRxCount == 2) && (gLastRegAddr == REG_READY_0x81)) {
             // g_regReady = data;
             gTxResponseByte = g_regReady;
+          } else if ((gLastRegAddr == REG_CALIBRATION_0x83) && (gRxCount == 9)) {
+            /* Received reg + 8 bytes payload. Copy into calibration buffer and
+             * notify calibration task. Keep ISR work minimal and ISR-safe. */
+            uint8_t i;
+            for (i = 0; i < 8; ++i) {
+              gCalibrationBuf[i] = gRxPacket[1 + i];
+            }
+            gCalibrationPending = true;
+            if (calibrationTaskHandle != NULL) {
+              BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+              vTaskNotifyGiveFromISR(calibrationTaskHandle, &xHigherPriorityTaskWoken);
+              /* increment a counter for diagnostics (ISR-safe) */
+              gCalibrationNotifyCount++;
+              portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            }
           }
         } else {
           gI2cRxOverflowCount++;
@@ -397,5 +436,43 @@ static void i2cLogTask(void *pvParameters)
       uint8_t data = i2cLogRing[i2cLogTail];
       i2cLogTail = (i2cLogTail + 1) & (I2C_LOG_RING_SIZE - 1);
     }
+  }
+}
+
+static void calibrationTask(void *pvParameters)
+{
+  (void)pvParameters;
+  for (;;) {
+    /* Wait until ISR notifies that an 8-byte calibration payload was received */
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    uint8_t localBuf[8];
+    int i;
+    /* Copy shared buffer under critical to avoid races with ISR */
+    taskENTER_CRITICAL();
+    for (i = 0; i < 8; ++i) {
+      localBuf[i] = gCalibrationBuf[i];
+    }
+    gCalibrationPending = false;
+    taskEXIT_CRITICAL();
+
+    /* Diagnostic: print notify counter and the captured bytes */
+    SEGGER_RTT_printf(0, "CalibrationTask: woke (notify_count=%u)\n", (unsigned)gCalibrationNotifyCount);
+    SEGGER_RTT_printf(0, "CalibrationTask: bytes: ");
+    for (i = 0; i < 8; ++i) {
+      SEGGER_RTT_printf(0, "%02X ", (unsigned)localBuf[i]);
+    }
+    SEGGER_RTT_printf(0, "\n");
+
+    /* Assemble big-endian 64-bit value from the 8 bytes sent by master */
+    uint64_t val = 0ULL;
+    for (i = 0; i < 8; ++i) {
+      val = (val << 8) | (uint64_t)localBuf[i];
+    }
+    if (!hddI2CWriteCalibrationData(val)) {
+      SEGGER_RTT_printf(0, "CalibrationTask: calibration flash write failed\n");
+    } else {
+      SEGGER_RTT_printf(0, "CalibrationTask: calibration flash write succeeded\n");
+    }
+    GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
   }
 }

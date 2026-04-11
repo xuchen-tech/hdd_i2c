@@ -366,7 +366,32 @@ bool nsa2300ReadPressureRaw24Single(uint32_t* p24) {
   }
 
   *p24 = ((uint32_t)raw[0] << 16) | ((uint32_t)raw[1] << 8) | (uint32_t)raw[2];
-  
+
+  return true;
+}
+
+bool nsa2300ReadPressureOutputSingle(uint32_t* value) {
+  uint32_t raw;
+  int32_t calibrated;
+
+  if (value == NULL) {
+    return false;
+  }
+
+  if (!nsa2300ReadPressureRaw24Single(&raw)) {
+    return false;
+  }
+
+  if (!nsa2300CalibrationEnabled()) {
+    *value = raw;
+    return true;
+  }
+
+  if (!nsa2300RawToKg(raw, &calibrated)) {
+    return false;
+  }
+
+  *value = (uint32_t)calibrated;
   return true;
 }
 
@@ -438,10 +463,19 @@ bool hddI2CWriteReady(uint8_t ready) {
 }
 
 bool nsa2300SetCalibration(uint32_t raw_zero_kg, uint32_t raw_full_3000kg) {
+  if (raw_zero_kg == 0u && raw_full_3000kg == 0u) {
+    calibration_low = 0u;
+    calibration_high = 0u;
+    calibration_valid = false;
+    SEGGER_RTT_printf(0, "NSA2300: calibration disabled\n");
+    return true;
+  }
+
   if (raw_full_3000kg == raw_zero_kg) {
     SEGGER_RTT_printf(0, "NSA2300: invalid calibration (identical points)\n");
     return false;
   }
+
   calibration_low = raw_zero_kg;
   calibration_high = raw_full_3000kg;
   calibration_valid = true;
@@ -475,4 +509,9 @@ bool nsa2300RawToKg(uint32_t raw, int32_t *kg) {
   SEGGER_RTT_printf(0, "NSA2300: raw=0x%06X frac=%.4f kg=%ld\n",
                     (unsigned)raw, frac, (long)out);
   return true;
+}
+
+bool nsa2300CalibrationEnabled(void) {
+  return calibration_valid &&
+         !(calibration_low == 0u && calibration_high == 0u);
 }

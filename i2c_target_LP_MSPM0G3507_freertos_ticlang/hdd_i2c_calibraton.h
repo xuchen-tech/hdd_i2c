@@ -10,5 +10,5 @@
 bool hddI2CCalibrationInit(void);
 bool hddI2CWriteCalibrationData(uint64_t calibrationData);
 bool hddI2CReadCalibrationData(uint32_t* low, uint32_t* high);
-
+bool hddI2CWriteCalibrationPair(uint32_t zero, uint32_t full);
 #endif /* __HDD_I2C_CALIBRATON_H__ */

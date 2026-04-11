@@ -118,16 +118,17 @@ void *payloadManagerThread(void *arg0) {
             continue;
         }
 
-        uint32_t pressureRaw24;
-        SEGGER_RTT_printf(0, "PM: before nsa2300ReadPressureRaw24Single\n");
-        if (nsa2300ReadPressureRaw24Single(&pressureRaw24)) {
-            SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureRaw24Single OK: %u, 0x:%x\n", pressureRaw24, pressureRaw24);
+        uint32_t pressureValue;
+        SEGGER_RTT_printf(0, "PM: before nsa2300ReadPressureOutputSingle\n");
+        if (nsa2300ReadPressureOutputSingle(&pressureValue)) {
+            SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureOutputSingle OK: %u, 0x:%x\n",
+                            pressureValue, pressureValue);
         } else {
-            SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureRaw24Single FAILED\n");
+            SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureOutputSingle FAILED\n");
             continue;
         }
 
-        const uint8_t payloadLen = buildDataPayload(dataBuffer, sizeof(dataBuffer), pressureRaw24, pt100Raw);
+        const uint8_t payloadLen = buildDataPayload(dataBuffer, sizeof(dataBuffer), pressureValue, pt100Raw);
         if (payloadLen == 0u) {
             SEGGER_RTT_printf(0, "Payload Manager: buildDataPayload failed\n");
             continue;

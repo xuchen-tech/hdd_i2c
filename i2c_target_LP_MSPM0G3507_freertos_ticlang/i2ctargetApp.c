@@ -463,15 +463,23 @@ static void calibrationTask(void *pvParameters)
     }
     SEGGER_RTT_printf(0, "\n");
 
-    /* Assemble big-endian 64-bit value from the 8 bytes sent by master */
-    uint64_t val = 0ULL;
-    for (i = 0; i < 8; ++i) {
-      val = (val << 8) | (uint64_t)localBuf[i];
-    }
-    if (!hddI2CWriteCalibrationData(val)) {
+    /* Assemble little-endian 64-bit value from the 8 bytes sent by master */
+    uint32_t zero = ((uint32_t)localBuf[0]) |
+                ((uint32_t)localBuf[1] << 8) |
+                ((uint32_t)localBuf[2] << 16) |
+                ((uint32_t)localBuf[3] << 24);
+
+    uint32_t full = ((uint32_t)localBuf[4]) |
+                    ((uint32_t)localBuf[5] << 8) |
+                    ((uint32_t)localBuf[6] << 16) |
+                    ((uint32_t)localBuf[7] << 24);
+
+    if (!hddI2CWriteCalibrationPair(zero, full)) {
       SEGGER_RTT_printf(0, "CalibrationTask: calibration flash write failed\n");
     } else {
-      SEGGER_RTT_printf(0, "CalibrationTask: calibration flash write succeeded\n");
+      SEGGER_RTT_printf(0,
+                        "CalibrationTask: calibration flash write succeeded, zero=0x%08X full=0x%08X\n",
+                        zero, full);
     }
     GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
   }

@@ -50,6 +50,9 @@ bool hddI2CWriteMode(HDD_I2C_Mode mode);
 bool hddI2CReadReady(uint8_t* ready);
 bool hddI2CWriteReady(uint8_t ready);
 bool hddI2CReadData(uint8_t* data, size_t len);
+
+bool nsa2300ReadPressureOutputSingle(uint32_t* value);
+bool nsa2300CalibrationEnabled(void);
 #ifdef __cplusplus
 }
 #endif

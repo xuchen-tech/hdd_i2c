@@ -110,3 +110,32 @@ bool hddI2CReadCalibrationData(uint32_t* low, uint32_t* high) {
 
   return true;
 }
+
+bool hddI2CWriteCalibrationPair(uint32_t zero, uint32_t full) {
+  uint32_t words[2] = {zero, full};
+
+  DL_FlashCTL_unprotectSector(FLASHCTL, MAIN_BASE_ADDRESS,
+                              DL_FLASHCTL_REGION_SELECT_MAIN);
+
+  gCmdStatus = DL_FlashCTL_eraseMemoryFromRAM(FLASHCTL, MAIN_BASE_ADDRESS,
+                                              DL_FLASHCTL_COMMAND_SIZE_SECTOR);
+  if (gCmdStatus == DL_FLASHCTL_COMMAND_STATUS_FAILED) {
+    SEGGER_RTT_printf(0, "Flash erase failed during calibration write\n");
+    return false;
+  }
+
+  DL_FlashCTL_unprotectSector(FLASHCTL, MAIN_BASE_ADDRESS,
+                              DL_FLASHCTL_REGION_SELECT_MAIN);
+
+  gCmdStatus = DL_FlashCTL_programMemoryFromRAM64WithECCGenerated(
+      FLASHCTL, MAIN_BASE_ADDRESS, &words[0]);
+  if (gCmdStatus == DL_FLASHCTL_COMMAND_STATUS_FAILED) {
+    SEGGER_RTT_printf(0, "Flash 64-bit write failed during calibration write\n");
+    return false;
+  }
+
+  DL_FlashCTL_waitForCmdDone(FLASHCTL);
+  SEGGER_RTT_printf(0, "Flash calibration saved: zero=0x%08X full=0x%08X\n",
+                    zero, full);
+  return true;
+}

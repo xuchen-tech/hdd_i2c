@@ -387,7 +387,7 @@ bool nsa2300ReadPressureOutputSingle(uint32_t* value) {
     return true;
   }
 
-  if (!nsa2300RawToKg(raw, &calibrated)) {
+  if (!nsa2300RawToPercentX100(raw, &calibrated)) {
     return false;
   }
 
@@ -484,12 +484,12 @@ bool nsa2300SetCalibration(uint32_t raw_zero_kg, uint32_t raw_full_3000kg) {
   return true;
 }
 
-bool nsa2300RawToKg(uint32_t raw, int32_t *kg) {
-  if (!calibration_valid || kg == NULL) {
+bool nsa2300RawToPercentX100(uint32_t raw, int32_t *percent_x100) {
+  if (!calibration_valid || percent_x100 == NULL) {
     return false;
   }
-
   /* Compute fraction = (raw - low) / (high - low), as double for precision. */
+
   double low = (double)calibration_low;
   double high = (double)calibration_high;
   double r = (double)raw;
@@ -501,13 +501,14 @@ bool nsa2300RawToKg(uint32_t raw, int32_t *kg) {
   if (frac > 1.0)
     frac = 1.0;
 
-  /* Map to 0..3000 kg, return integer kg (rounded) */
-  double kgd = frac * 3000.0;
-  int32_t out = (int32_t)lround(kgd);
-  *kg = out;
+  *percent_x100 = (uint32_t)lround(frac * 10000.0);
 
-  SEGGER_RTT_printf(0, "NSA2300: raw=0x%06X frac=%.4f kg=%ld\n",
-                    (unsigned)raw, frac, (long)out);
+  SEGGER_RTT_printf(0,
+                    "NSA2300: raw=0x%06X frac=%.4f percent=%lu.%02lu%%\n",
+                    (unsigned)raw,
+                    frac,
+                    (unsigned long)(*percent_x100 / 100u),
+                    (unsigned long)(*percent_x100 % 100u));
   return true;
 }
 

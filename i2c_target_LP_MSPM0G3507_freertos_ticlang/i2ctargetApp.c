@@ -87,6 +87,9 @@ static volatile uint8_t payloadBuf[2][READY_PAYLOAD_MAX_LEN_BYTES] = {
 static volatile uint8_t activeIndex = 0;
 static volatile uint8_t reg82SnapshotIndex;
 static volatile uint8_t reg82SnapshotLen;
+static volatile uint8_t reg83Snapshot[8];
+static volatile uint8_t reg83SnapshotLen;
+static volatile uint8_t gReg83TxCount = 0;
 
 volatile size_t wrote = 0;
 
@@ -153,6 +156,39 @@ static void i2cTargetLoadReg82Chunk(void) {
       I2C0_INST, (void *)&payloadBuf[reg82SnapshotIndex][gReg82TxCount],
       chunkLen);
   gReg82TxCount = (uint8_t)(gReg82TxCount + (uint8_t)wrote);
+}
+
+static void i2cTargetPrepareReg83Snapshot(void) {
+  uint32_t *ptr = (uint32_t *)MAIN_BASE_ADDRESS;
+  uint32_t low = ptr[0];
+  uint32_t high = ptr[1];
+
+  reg83Snapshot[0] = (uint8_t)(low & 0xFFu);
+  reg83Snapshot[1] = (uint8_t)((low >> 8) & 0xFFu);
+  reg83Snapshot[2] = (uint8_t)((low >> 16) & 0xFFu);
+  reg83Snapshot[3] = (uint8_t)((low >> 24) & 0xFFu);
+  reg83Snapshot[4] = (uint8_t)(high & 0xFFu);
+  reg83Snapshot[5] = (uint8_t)((high >> 8) & 0xFFu);
+  reg83Snapshot[6] = (uint8_t)((high >> 16) & 0xFFu);
+  reg83Snapshot[7] = (uint8_t)((high >> 24) & 0xFFu);
+  reg83SnapshotLen = 8u;
+  gReg83TxCount = 0u;
+}
+
+static void i2cTargetLoadReg83Chunk(void) {
+  if (gReg83TxCount >= reg83SnapshotLen) {
+    return;
+  }
+
+  size_t remaining = (size_t)(reg83SnapshotLen - gReg83TxCount);
+  size_t chunkLen =
+      (remaining > I2C_TARGET_TX_FIFO_CHUNK_SIZE)
+          ? I2C_TARGET_TX_FIFO_CHUNK_SIZE
+          : remaining;
+
+  wrote = DL_I2C_fillTargetTXFIFO(
+      I2C0_INST, (void *)&reg83Snapshot[gReg83TxCount], chunkLen);
+  gReg83TxCount = (uint8_t)(gReg83TxCount + (uint8_t)wrote);
 }
 /* Log task prototype */
 static void i2cLogTask(void *pvParameters);
@@ -318,10 +354,10 @@ void I2C0_IRQHandler(void)
             reg82SnapshotLen = g_regReady;
             i2cTargetLoadReg82Chunk();
           } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
-            /* Calibration region: master will write 8 bytes after register
-             * pointer. Defer flash/program work to task context; in ISR just
-             * capture bytes and set pending flag. */
-            /* nothing to preload for read */
+            /* Snapshot calibration bytes so a repeated-start READ of 0x83
+             * returns the stored calibration payload. */
+            i2cTargetPrepareReg83Snapshot();
+            i2cTargetLoadReg83Chunk();
           } else {
             gTxResponseByte = 0x00;
             DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
@@ -383,6 +419,8 @@ void I2C0_IRQHandler(void)
       gI2cTxTrigCount++;
       if (gLastRegAddr == REG_DATA_0x82) {
         i2cTargetLoadReg82Chunk();
+      } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
+        i2cTargetLoadReg83Chunk();
       }
       break;
 
@@ -402,6 +440,8 @@ void I2C0_IRQHandler(void)
       gLastRegAddr = 0x00;
       gTxResponseByte = 0x00;
       gReg82TxCount = 0;
+      gReg83TxCount = 0;
+      reg83SnapshotLen = 0;
       regPointerLatched = false;
       GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
       break;

@@ -1,6 +1,7 @@
 #include "i2c_controller.h"
 
 #include <string.h>
+#include <math.h>
 
 /* RTOS header files */
 #include <FreeRTOS.h>
@@ -21,6 +22,14 @@ uint32_t calibration_low = 0;
 uint32_t calibration_high = 0;
 /* calibration_valid indicates whether calibration_low/high contain a valid pair */
 static volatile bool calibration_valid = false;
+
+static int32_t nsa2300SignExtend24(uint32_t value) {
+  value &= 0x00FFFFFFu;
+  if ((value & 0x00800000u) != 0u) {
+    value |= 0xFF000000u;
+  }
+  return (int32_t)value;
+}
 
 static uint8_t txBuffer[BUFFER_SIZE];
 static uint8_t rxBuffer[BUFFER_SIZE];
@@ -463,6 +472,9 @@ bool hddI2CWriteReady(uint8_t ready) {
 }
 
 bool nsa2300SetCalibration(uint32_t raw_zero_kg, uint32_t raw_full_3000kg) {
+  raw_zero_kg &= 0x00FFFFFFu;
+  raw_full_3000kg &= 0x00FFFFFFu;
+
   if (raw_zero_kg == 0u && raw_full_3000kg == 0u) {
     calibration_low = 0u;
     calibration_high = 0u;
@@ -479,21 +491,28 @@ bool nsa2300SetCalibration(uint32_t raw_zero_kg, uint32_t raw_full_3000kg) {
   calibration_low = raw_zero_kg;
   calibration_high = raw_full_3000kg;
   calibration_valid = true;
-  SEGGER_RTT_printf(0, "NSA2300: calibration set: zero=0x%06X full=0x%06X\n",
-                    (unsigned)calibration_low, (unsigned)calibration_high);
+  SEGGER_RTT_printf(0,
+                    "NSA2300: calibration set: zero=0x%06X full=0x%06X (signed %ld, %ld)\n",
+                    (unsigned)calibration_low, (unsigned)calibration_high,
+                    (long)nsa2300SignExtend24(calibration_low),
+                    (long)nsa2300SignExtend24(calibration_high));
   return true;
 }
 
 bool nsa2300RawToPercentX100(uint32_t raw, int32_t *percent_x100) {
+  int32_t low;
+  int32_t high;
+  int32_t signed_raw;
+  double frac;
+
   if (!calibration_valid || percent_x100 == NULL) {
     return false;
   }
-  /* Compute fraction = (raw - low) / (high - low), as double for precision. */
 
-  double low = (double)calibration_low;
-  double high = (double)calibration_high;
-  double r = (double)raw;
-  double frac = (r - low) / (high - low);
+  low = nsa2300SignExtend24(calibration_low);
+  high = nsa2300SignExtend24(calibration_high);
+  signed_raw = nsa2300SignExtend24(raw);
+  frac = ((double)signed_raw - (double)low) / ((double)high - (double)low);
 
   /* Clamp 0..1 */
   if (frac < 0.0)
@@ -504,8 +523,9 @@ bool nsa2300RawToPercentX100(uint32_t raw, int32_t *percent_x100) {
   *percent_x100 = (uint32_t)lround(frac * 10000.0);
 
   SEGGER_RTT_printf(0,
-                    "NSA2300: raw=0x%06X frac=%.4f percent=%lu.%02lu%%\n",
-                    (unsigned)raw,
+                    "NSA2300: raw=0x%06X signed=%ld frac=%.4f percent=%lu.%02lu%%\n",
+                    (unsigned)(raw & 0x00FFFFFFu),
+                    (long)signed_raw,
                     frac,
                     (unsigned long)(*percent_x100 / 100u),
                     (unsigned long)(*percent_x100 % 100u));

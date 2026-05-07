@@ -170,7 +170,7 @@ static bool i2cWriteReg8(uint8_t targetAddress, uint8_t* txBuf,
   i2cTransaction.readCount = 0;
   i2cTransaction.targetAddress = targetAddress;
 
-  if (!i2cTransferAndWait(&i2cTransaction)) {
+  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
     return false;
   }
   return true;
@@ -192,7 +192,7 @@ static bool i2cReadReg8(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
   i2cTransaction.readCount = 1;
   i2cTransaction.targetAddress = targetAddress;
 
-  if (!i2cTransferAndWait(&i2cTransaction)) {
+  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
     return false;
   }
   *value = rxBuf[0];
@@ -215,7 +215,7 @@ static bool i2cReadRegN(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
   i2cTransaction.readCount = (uint16_t)outLen;
   i2cTransaction.targetAddress = targetAddress;
 
-  if (!i2cTransferAndWait(&i2cTransaction)) {
+  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
     return false;
   }
 
@@ -265,9 +265,9 @@ static void i2cErrorHandler(I2C_Transaction* transaction) {
 
 bool nsa2300Init() {
   I2C_Params_init(&g_i2cParams);
-  g_i2cParams.bitRate = I2C_400kHz;
-  g_i2cParams.transferMode = I2C_MODE_CALLBACK;
-  g_i2cParams.transferCallbackFxn = i2cTransferCallback;
+  g_i2cParams.bitRate = I2C_100kHz;
+  g_i2cParams.transferMode = I2C_MODE_BLOCKING;
+  // g_i2cParams.transferCallbackFxn = i2cTransferCallback;
   g_i2cHandle = I2C_open(CONFIG_I2C_0, &g_i2cParams);
   if (g_i2cHandle == NULL) {
     SEGGER_RTT_printf(0, "NSA2300: Error initializing I2C\n");
@@ -534,5 +534,6 @@ bool nsa2300RawToPercentX100(uint32_t raw, int32_t *percent_x100) {
 
 bool nsa2300CalibrationEnabled(void) {
   return calibration_valid &&
-         !(calibration_low == 0u && calibration_high == 0u);
+         !(calibration_low == 0u && calibration_high == 0u) &&
+         (calibration_low != calibration_high);
 }

@@ -100,13 +100,6 @@ void *payloadManagerThread(void *arg0) {
             pt100Raw = 0;
         }
 
-        /* I2C target service is on I2C0 while NSA2300 controller access is on
-         * I2C1, so there is no need to wait for the target-side IRQ counter to
-         * become idle before starting a controller-side measurement.
-         * Pause target service only for the short controller transaction window.
-         */
-        SEGGER_RTT_printf(0, "PM: pausing I2C target service before NSA2300 start\n");
-
         SEGGER_RTT_printf(0, "PM: before nsa2300StartMeasurement\n");
         if (!nsa2300StartMeasurement()) {
             SEGGER_RTT_printf(0, "PM: nsa2300StartMeasurement FAILED\n");
@@ -119,7 +112,6 @@ void *payloadManagerThread(void *arg0) {
         }
 
         uint32_t pressureValue;
-        SEGGER_RTT_printf(0, "PM: before nsa2300ReadPressureOutputSingle\n");
         if (nsa2300ReadPressureOutputSingle(&pressureValue)) {
             SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureOutputSingle OK: %u, 0x:%x\n",
                             pressureValue, pressureValue);
@@ -194,6 +186,6 @@ void *payloadManagerThread(void *arg0) {
             SEGGER_RTT_printf(0, " %02x", dataBuffer[i]);
         }
         SEGGER_RTT_printf(0, "\n");
-        usleep(100000);
+        usleep(200000);
     }
 }

@@ -54,6 +54,7 @@
 #include "ti_drivers_config.h"
 #include "ti_msp_dl_config.h"
 #include "hdd_i2c_calibraton.h"
+#include "i2c_controller.h"
 
 extern void *mainThread(void *arg0);
 extern void *i2cControllerThread(void *arg0);
@@ -64,7 +65,7 @@ extern uint32_t calibration_high;
 
 /* Stack size in bytes */
 #define MAIN_THREADSTACKSIZE    (1024)
-#define PAYLOAD_THREADSTACKSIZE (1024)
+#define PAYLOAD_THREADSTACKSIZE (1536)
 
 /* Set up the hardware ready to run this demo */
 static void prvSetupHardware(void);

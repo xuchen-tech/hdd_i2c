@@ -64,7 +64,7 @@ void PayloadManager_requestSampleFromISR(void) {
 
 void *payloadManagerThread(void *arg0) {
     bool ret;
-    uint16_t pt100Raw;
+    int16_t pt100Raw;
     uint8_t dataBuffer[BUFFER_SIZE] = {0};
     uint8_t mode = 0, ready = 0;
     uint8_t nas2300_init_attempts = 10;
@@ -88,6 +88,8 @@ void *payloadManagerThread(void *arg0) {
         usleep(200000);
     }
 
+    uint8_t nsa2300ConsecFail = 0u;
+
     while (1) {
         uint8_t readyToPublish = 0u;
 
@@ -108,6 +110,23 @@ void *payloadManagerThread(void *arg0) {
         SEGGER_RTT_printf(0, "PM: before nsa2300WaitForDataReady\n");
         if (!nsa2300WaitForDataReady()) {
             SEGGER_RTT_printf(0, "PM: nsa2300WaitForDataReady FAILED\n");
+            nsa2300ConsecFail++;
+            if (nsa2300ConsecFail >= 3u) {
+                SEGGER_RTT_printf(0, "PM: NSA2300 failed %u consecutive times; reinitializing I2C and sensor\n",
+                                  (unsigned)nsa2300ConsecFail);
+                nsa2300ConsecFail = 0u;
+                nas2300Deinit();
+                usleep(50000);
+                for (uint8_t ri = 0; ri < nas2300_init_attempts; ri++) {
+                    if (nsa2300Init()) {
+                        SEGGER_RTT_printf(0, "PM: NSA2300 reinitialized on attempt %u\n", (unsigned)(ri + 1u));
+                        break;
+                    }
+                    SEGGER_RTT_printf(0, "PM: NSA2300 reinit attempt %u failed\n", (unsigned)(ri + 1u));
+                    usleep(200000);
+                }
+            }
+            usleep(200000);
             continue;
         }
 
@@ -120,7 +139,7 @@ void *payloadManagerThread(void *arg0) {
             continue;
         }
 
-        const uint8_t payloadLen = buildDataPayload(dataBuffer, sizeof(dataBuffer), pressureValue, pt100Raw);
+        const uint8_t payloadLen = buildDataPayload(dataBuffer, sizeof(dataBuffer), pressureValue, (uint16_t)pt100Raw);
         if (payloadLen == 0u) {
             SEGGER_RTT_printf(0, "Payload Manager: buildDataPayload failed\n");
             continue;
@@ -159,6 +178,7 @@ void *payloadManagerThread(void *arg0) {
                                 }
                             } else {
                                 SEGGER_RTT_printf(0, "HDD I2C Read Data failed\n");
+                                memset(dataBuffer + payloadLen, 0, (size_t)(sizeof(dataBuffer) - payloadLen));
                             }
                             break;
                         } else {

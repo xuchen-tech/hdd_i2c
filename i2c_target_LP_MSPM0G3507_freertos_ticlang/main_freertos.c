@@ -65,7 +65,7 @@ extern uint32_t calibration_high;
 
 /* Stack size in bytes */
 #define MAIN_THREADSTACKSIZE    (1024)
-#define PAYLOAD_THREADSTACKSIZE (1536)
+#define PAYLOAD_THREADSTACKSIZE (2048)
 
 /* Set up the hardware ready to run this demo */
 static void prvSetupHardware(void);
@@ -99,24 +99,24 @@ int main(void)
     hddI2CReadCalibrationData(&calibration_low, &calibration_high);
     nsa2300SetCalibration(calibration_low, calibration_high);
 
-    /* payloadManagerThread: lower priority, larger stack */
-    pthread_attr_init(&attrsPayload);
-    priPayload.sched_priority = 1;
-    retc  = pthread_attr_setschedparam(&attrsPayload, &priPayload);
-    retc |= pthread_attr_setdetachstate(&attrsPayload, PTHREAD_CREATE_DETACHED);
-    retc |= pthread_attr_setstacksize(&attrsPayload, PAYLOAD_THREADSTACKSIZE);
-    if (retc != 0) {
-        /* failed to set attributes */
-        while (1) {
+        /* payloadManagerThread: lower priority, larger stack */
+        pthread_attr_init(&attrsPayload);
+        priPayload.sched_priority = 1;
+        retc  = pthread_attr_setschedparam(&attrsPayload, &priPayload);
+        retc |= pthread_attr_setdetachstate(&attrsPayload, PTHREAD_CREATE_DETACHED);
+        retc |= pthread_attr_setstacksize(&attrsPayload, PAYLOAD_THREADSTACKSIZE);
+        if (retc != 0) {
+            /* failed to set attributes */
+            while (1) {
+            }
         }
-    }
 
-    retc = pthread_create(&threadPayload, &attrsPayload, payloadManagerThread, NULL);
-    if (retc != 0) {
-        /* pthread_create() failed */
-        while (1) {
+        retc = pthread_create(&threadPayload, &attrsPayload, payloadManagerThread, NULL);
+        if (retc != 0) {
+            /* pthread_create() failed */
+            while (1) {
+            }
         }
-    }
 
     /* mainThread: higher priority, normal stack */
     pthread_attr_init(&attrsMain);

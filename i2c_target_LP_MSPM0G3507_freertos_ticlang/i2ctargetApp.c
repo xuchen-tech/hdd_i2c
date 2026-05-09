@@ -84,7 +84,10 @@ static volatile uint8_t payloadBuf[2][READY_PAYLOAD_MAX_LEN_BYTES] = {
   {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xCA},
   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}
 };
+
+#define INVALID_BUFFER_INDEX 0xFFu
 static volatile uint8_t activeIndex = 0;
+static volatile uint8_t txReadingBuffer = INVALID_BUFFER_INDEX;
 static volatile uint8_t reg82SnapshotIndex;
 static volatile uint8_t reg82SnapshotLen;
 static volatile uint8_t reg83Snapshot[8];
@@ -96,18 +99,54 @@ volatile size_t wrote = 0;
 #define I2C_TARGET_TX_FIFO_CHUNK_SIZE 8u
 
 void updatePayloadData(uint8_t* data, uint8_t len) {
-  if (len > READY_PAYLOAD_MAX_LEN_BYTES) {
-    len = READY_PAYLOAD_MAX_LEN_BYTES;
-  }
-  uint8_t inactive = (uint8_t)(activeIndex ^ 1);
-  /* Write into inactive buffer, then publish by atomically swapping active index. */
-  memcpy((void*)payloadBuf[inactive], (const void*)data, len);
+  uint8_t inactive;
 
-  /* publish length and swap active index atomically */
-  taskENTER_CRITICAL();  
-  g_regReady = (uint8_t)len;
-  activeIndex = inactive;
-  taskEXIT_CRITICAL();
+    if (len > READY_PAYLOAD_MAX_LEN_BYTES) {
+        len = READY_PAYLOAD_MAX_LEN_BYTES;
+    }
+
+    taskENTER_CRITICAL();
+
+    inactive = (uint8_t)(activeIndex ^ 1);
+
+    /* 防止覆盖正在发送的 buffer */
+    if (inactive == txReadingBuffer) {
+
+        /*
+         * 当前 inactive buffer 正被 I2C TX 使用。
+         *
+         * 双buffer无法继续安全切换。
+         *
+         * 方案：
+         * 1. 丢弃本次更新（推荐）
+         * 2. 或等待
+         */
+
+        taskEXIT_CRITICAL();
+
+        return;
+    }
+
+    taskEXIT_CRITICAL();
+
+    /*
+     * 写 inactive buffer
+     */
+
+    memcpy((void*)payloadBuf[inactive],
+           (const void*)data,
+           len);
+
+    /*
+     * 原子发布
+     */
+
+    taskENTER_CRITICAL();
+
+    g_regReady = (uint8_t)len;
+    activeIndex = inactive;
+
+    taskEXIT_CRITICAL();
 }
 
 /* Maximum size of TX packet */
@@ -350,8 +389,11 @@ void I2C0_IRQHandler(void)
           } else if (gLastRegAddr == REG_DATA_0x82) {
             gReg82TxCount = 0;
             gI2cTxDoneCount = 0;
+            UBaseType_t saved = taskENTER_CRITICAL_FROM_ISR();
             reg82SnapshotIndex = activeIndex;
             reg82SnapshotLen = g_regReady;
+            txReadingBuffer = reg82SnapshotIndex;
+            taskEXIT_CRITICAL_FROM_ISR(saved);
             i2cTargetLoadReg82Chunk();
           } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
             /* Snapshot calibration bytes so a repeated-start READ of 0x83
@@ -381,7 +423,7 @@ void I2C0_IRQHandler(void)
               PayloadManager_requestSampleFromISR();
             }
           } else if ((gRxCount == 2) && (gLastRegAddr == REG_READY_0x81)) {
-            // g_regReady = data;
+            g_regReady = data;
             gTxResponseByte = g_regReady;
           } else if ((gLastRegAddr == REG_CALIBRATION_0x83) && (gRxCount == 9)) {
             /* Received reg + 8 bytes payload. Copy into calibration buffer and
@@ -443,13 +485,15 @@ void I2C0_IRQHandler(void)
       gReg83TxCount = 0;
       reg83SnapshotLen = 0;
       regPointerLatched = false;
+      /* 释放发送 buffer */
+      txReadingBuffer = INVALID_BUFFER_INDEX;
       GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
       break;
 
     case DL_I2C_IIDX_TARGET_RX_DONE:
       gI2cRxDoneCount++;
       /* Keep pointer context for repeated-start READ. Cleared by TX_DONE/STOP. */
-      regPointerLatched = false;
+      // regPointerLatched = false;
     break;
     case DL_I2C_IIDX_TARGET_RXFIFO_FULL:
     case DL_I2C_IIDX_TARGET_GENERAL_CALL:

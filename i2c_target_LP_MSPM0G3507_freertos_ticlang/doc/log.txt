@@ -1,0 +1,1370 @@
+00> Starting the segger rtt logger
+00> Read back from flash: low=0xFFFFFFFF high=0xFFFFFFFF
+00> NSA2300: invalid calibration (identical points)
+00> PT1000: CONFIG_ADC_0 initialized successfully
+00> NSA2300: I2C initialized successfully
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1428, ADC microVolts = 1150768
+00> PT1000: calculated resistance = 1080403 mOhm (1080.403 Ohm), temp_x10 = 206
+00> PM: pt1000ReadTemperature_x10 OK, temp=206
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630239, 0x:FDC1DF
+00> Built Payload: P24=0xFDC1DF, PT100Raw=0x00CE, CRC16=0x694B
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): DF C1 FD 00 CE 00 4B 69 BB FF FE 00 EF 00 72 9C
+00> PM: before pt1000ReadTemperature_x10
+00>  82 C1PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630968, 0x:FDC4B8
+00> Built Payload: P24=0xFDC4B8, PT100Raw=0x00D6, CRC16=0x7E85
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): B8 C4 FD 00 D6 00 85 7E F0 05 FF 00 FD 00 A8 6F
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631083, 0x:FDC52B
+00> Built Payload: P24=0xFDC52B, PT100Raw=0x00D6, CRC16=0xDDA5
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 2B C5 FD 00 D6 00 A5 DD 5D 06 FF 00 FD 00 F5 D2
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631188, 0x:FDC594
+00> Built Payload: P24=0xFDC594, PT100Raw=0x00D6, CRC16=0x12BF
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 94 C5 FD 00 D6 00 BF 12 12 05 FF 00 FF 00 BE 8D
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631192, 0x:FDC598
+00> Built Payload: P24=0xFDC598, PT100Raw=0x00D6, CRC16=0xDEBF
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 98 C5 FD 00 D6 00 BF DE F9 04 FF 00 FF 00 94 56
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1433, ADC microVolts = 1154800
+00> PT1000: calculated resistance = 1084313 mOhm (1084.313 Ohm), temp_x10 = 216
+00> PM: pt1000ReadTemperature_x10 OK, temp=216
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631316, 0x:FDC614
+00> Built Payload: P24=0xFDC614, PT100Raw=0x00D8, CRC16=0xB2E0
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 14 C6 FD 00 D8 00 E0 B2 96 05 FF 00 FF 00 A0 C9
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1429, ADC microVolts = 1151568
+00> PT1000: calculated resistance = 1081179 mOhm (1081.179 Ohm), temp_x10 = 208
+00> PM: pt1000ReadTemperature_x10 OK, temp=208
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630797, 0x:FDC40D
+00> Built Payload: P24=0xFDC40D, PT100Raw=0x00D0, CRC16=0xBB9C
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 0D C4 FD 00 D0 00 9C BB 5E 05 FF 00 FF 00 B0 81
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631189, 0x:FDC595
+00> Built Payload: P24=0xFDC595, PT100Raw=0x00D4, CRC16=0xA3BF
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 95 C5 FD 00 D4 00 BF A3 C1 05 FF 00 FF 00 AD 2E
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631079, 0x:FDC527
+00> Built Payload: P24=0xFDC527, PT100Raw=0x00D6, CRC16=0x11A5
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 27 C5 FD 00 D6 00 A5 11 62 05 FF 00 FF 00 B5 BD
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631153, 0x:FDC571
+00> Built Payload: P24=0xFDC571, PT100Raw=0x00D6, CRC16=0x27A9
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 71 C5 FD 00 D6 00 A9 27 86 06 FF 00 FF 00 E6 59
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631058, 0x:FDC512
+00> Built Payload: P24=0xFDC512, PT100Raw=0x00D6, CRC16=0xB4A0
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 12 C5 FD 00 D6 00 A0 B4 19 06 FF 00 FD 00 FA 96
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630936, 0x:FDC498
+00> Built Payload: P24=0xFDC498, PT100Raw=0x00D4, CRC16=0x7E83
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 98 C4 FD 00 D4 00 83 7E 50 06 FF 00 FF 00 F5 AF
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631048, 0x:FDC508
+00> Built Payload: P24=0xFDC508, PT100Raw=0x00D6, CRC16=0x8EA2
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 08 C5 FD 00 D6 00 A2 8E A8 05 FF 00 FF 00 A4 17
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631123, 0x:FDC553
+00> Built Payload: P24=0xFDC553, PT100Raw=0x00D4, CRC16=0xC5AE
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 53 C5 FD 00 D4 00 AE C5 5B 05 FF 00 FD 00 B1 B4
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631136, 0x:FDC560
+00> Built Payload: P24=0xFDC560, PT100Raw=0x00D6, CRC16=0x66AA
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 60 C5 FD 00 D6 00 AA 66 7A 05 FF 00 FF 00 B6 65
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631044, 0x:FDC504
+00> Built Payload: P24=0xFDC504, PT100Raw=0x00D6, CRC16=0x42A2
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 04 C5 FD 00 D6 00 A2 42 D5 04 FF 00 FF 00 93 FA
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631060, 0x:FDC514
+00> Built Payload: P24=0xFDC514, PT100Raw=0x00D6, CRC16=0xD2A0
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 14 C5 FD 00 D6 00 A0 D2 2B 05 FF 00 FD 00 BA 84
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631055, 0x:FDC50F
+00> Built Payload: P24=0xFDC50F, PT100Raw=0x00D4, CRC16=0x59A2
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 0F C5 FD 00 D4 00 A2 59 C9 05 FF 00 FF 00 AC 66
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630921, 0x:FDC489
+00> Built Payload: P24=0xFDC489, PT100Raw=0x00D6, CRC16=0x5F81
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 89 C4 FD 00 D6 00 81 5F 0A 05 FF 00 FD 00 BC 35
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631226, 0x:FDC5BA
+00> Built Payload: P24=0xFDC5BA, PT100Raw=0x00D6, CRC16=0x5CB9
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): BA C5 FD 00 D6 00 B9 5C CD 05 FF 00 FF 00 AD E2
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630785, 0x:FDC401
+00> Built Payload: P24=0xFDC401, PT100Raw=0x00D6, CRC16=0xD79F
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 01 C4 FD 00 D6 00 9F D7 1F 05 FF 00 FF 00 BF 90
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630926, 0x:FDC48E
+00> Built Payload: P24=0xFDC48E, PT100Raw=0x00D6, CRC16=0xE880
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 8E C4 FD 00 D6 00 80 E8 F2 05 FF 00 FF 00 A8 ED
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630975, 0x:FDC4BF
+00> Built Payload: P24=0xFDC4BF, PT100Raw=0x00D6, CRC16=0xC984
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): BF C4 FD 00 D6 00 84 C9 B3 05 FF 00 FF 00 A7 FC
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630942, 0x:FDC49E
+00> Built Payload: P24=0xFDC49E, PT100Raw=0x00D4, CRC16=0x1883
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 9E C4 FD 00 D4 00 83 18 35 05 FF 00 01 01 39 FA
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630858, 0x:FDC44A
+00> Built Payload: P24=0xFDC44A, PT100Raw=0x00D6, CRC16=0x6C90
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 4A C4 FD 00 D6 00 90 6C B1 05 FF 00 FD 00 A7 7E
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630972, 0x:FDC4BC
+00> Built Payload: P24=0xFDC4BC, PT100Raw=0x00D6, CRC16=0xFA84
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): BC C4 FD 00 D6 00 84 FA 0B 06 FF 00 FF 00 F8 84
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1430, ADC microVolts = 1152384
+00> PT1000: calculated resistance = 1081970 mOhm (1081.970 Ohm), temp_x10 = 210
+00> PM: pt1000ReadTemperature_x10 OK, temp=210
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631034, 0x:FDC4FA
+00> Built Payload: P24=0xFDC4FA, PT100Raw=0x00D2, CRC16=0x9C88
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): FA C4 FD 00 D2 00 88 9C E5 04 FF 00 FF 00 96 0A
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630920, 0x:FDC488
+00> Built Payload: P24=0xFDC488, PT100Raw=0x00D6, CRC16=0x8E80
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 88 C4 FD 00 D6 00 80 8E D7 04 FF 00 FF 00 92 18
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630861, 0x:FDC44D
+00> Built Payload: P24=0xFDC44D, PT100Raw=0x00D6, CRC16=0xDB91
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 4D C4 FD 00 D6 00 91 DB 7E 05 FF 00 01 01 36 41
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630897, 0x:FDC471
+00> Built Payload: P24=0xFDC471, PT100Raw=0x00D6, CRC16=0xE794
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 71 C4 FD 00 D6 00 94 E7 6E 05 FF 00 FD 00 B4 11
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631123, 0x:FDC553
+00> Built Payload: P24=0xFDC553, PT100Raw=0x00D6, CRC16=0xA5AF
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 53 C5 FD 00 D6 00 AF A5 B7 05 FF 00 FF 00 A6 78
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630884, 0x:FDC464
+00> Built Payload: P24=0xFDC464, PT100Raw=0x00D4, CRC16=0x4297
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 64 C4 FD 00 D4 00 97 42 CD 05 FF 00 FF 00 AD E2
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1430, ADC microVolts = 1152384
+00> PT1000: calculated resistance = 1081970 mOhm (1081.970 Ohm), temp_x10 = 210
+00> PM: pt1000ReadTemperature_x10 OK, temp=210
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631031, 0x:FDC4F7
+00> Built Payload: P24=0xFDC4F7, PT100Raw=0x00D2, CRC16=0x8189
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): F7 C4 FD 00 D2 00 89 81 A9 04 FF 00 FF 00 98 06
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631021, 0x:FDC4ED
+00> Built Payload: P24=0xFDC4ED, PT100Raw=0x00D6, CRC16=0x7B89
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): ED C4 FD 00 D6 00 89 7B E3 05 FF 00 FF 00 AB AC
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631005, 0x:FDC4DD
+00> Built Payload: P24=0xFDC4DD, PT100Raw=0x00D6, CRC16=0x8B8C
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): DD C4 FD 00 D6 00 8C 8B 20 05 FF 00 FF 00 BA 9F
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630747, 0x:FDC3DB
+00> Built Payload: P24=0xFDC3DB, PT100Raw=0x00D4, CRC16=0x4D38
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): DB C3 FD 00 D4 00 38 4D 34 06 FF 00 FF 00 FD 8B
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630924, 0x:FDC48C
+00> Built Payload: P24=0xFDC48C, PT100Raw=0x00D6, CRC16=0x0A81
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 8C C4 FD 00 D6 00 81 0A FE 04 FF 00 FF 00 95 E1
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631180, 0x:FDC58C
+00> Built Payload: P24=0xFDC58C, PT100Raw=0x00D6, CRC16=0xCABC
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 8C C5 FD 00 D6 00 BC CA 9B 05 FF 00 FD 00 A0 B4
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630714, 0x:FDC3BA
+00> Built Payload: P24=0xFDC3BA, PT100Raw=0x00D6, CRC16=0x5C31
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): BA C3 FD 00 D6 00 31 5C 9F 04 FF 00 FD 00 9C F0
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631122, 0x:FDC552
+00> Built Payload: P24=0xFDC552, PT100Raw=0x00D6, CRC16=0x74AE
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 52 C5 FD 00 D6 00 AE 74 D8 05 FF 00 FD 00 AE 47
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630905, 0x:FDC479
+00> Built Payload: P24=0xFDC479, PT100Raw=0x00D6, CRC16=0xAF95
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 79 C4 FD 00 D6 00 95 AF 10 06 FF 00 F9 00 F8 CF
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1433, ADC microVolts = 1154800
+00> PT1000: calculated resistance = 1084313 mOhm (1084.313 Ohm), temp_x10 = 216
+00> PM: pt1000ReadTemperature_x10 OK, temp=216
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631057, 0x:FDC511
+00> Built Payload: P24=0xFDC511, PT100Raw=0x00D8, CRC16=0xE7A4
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 11 C5 FD 00 D8 00 A4 E7 AF 06 FF 00 FF 00 E1 A0
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630937, 0x:FDC499
+00> Built Payload: P24=0xFDC499, PT100Raw=0x00D6, CRC16=0xCF83
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 99 C4 FD 00 D6 00 83 CF 8E 04 FF 00 FF 00 9E D1
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1433, ADC microVolts = 1154800
+00> PT1000: calculated resistance = 1084313 mOhm (1084.313 Ohm), temp_x10 = 216
+00> PM: pt1000ReadTemperature_x10 OK, temp=216
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630910, 0x:FDC47E
+00> Built Payload: P24=0xFDC47E, PT100Raw=0x00D8, CRC16=0x7890
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 7E C4 FD 00 D8 00 90 78 69 06 FF 00 FD 00 F1 A6
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630908, 0x:FDC47C
+00> Built Payload: P24=0xFDC47C, PT100Raw=0x00D6, CRC16=0xFA95
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 7C C4 FD 00 D6 00 95 FA 5E 05 FF 00 FF 00 B0 81
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630898, 0x:FDC472
+00> Built Payload: P24=0xFDC472, PT100Raw=0x00D6, CRC16=0xD494
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 72 C4 FD 00 D6 00 94 D4 30 05 FF 00 FF 00 B8 0F
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631097, 0x:FDC539
+00> Built Payload: P24=0xFDC539, PT100Raw=0x00D6, CRC16=0xAFA6
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 39 C5 FD 00 D6 00 A6 AF 93 06 FF 00 FF 00 E4 9C
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630860, 0x:FDC44C
+00> Built Payload: P24=0xFDC44C, PT100Raw=0x00D4, CRC16=0x6A91
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 4C C4 FD 00 D4 00 91 6A F9 05 FF 00 FF 00 A9 96
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631045, 0x:FDC505
+00> Built Payload: P24=0xFDC505, PT100Raw=0x00D6, CRC16=0x93A3
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 05 C5 FD 00 D6 00 A3 93 51 05 FF 00 01 01 31 DE
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630867, 0x:FDC453
+00> Built Payload: P24=0xFDC453, PT100Raw=0x00D6, CRC16=0x6592
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 53 C4 FD 00 D6 00 92 65 69 05 FF 00 FF 00 B4 C6
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630886, 0x:FDC466
+00> Built Payload: P24=0xFDC466, PT100Raw=0x00D6, CRC16=0xC097
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 66 C4 FD 00 D6 00 97 C0 EB 04 FF 00 FF 00 97 24
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630768, 0x:FDC3F0
+00> Built Payload: P24=0xFDC3F0, PT100Raw=0x00D6, CRC16=0x363F
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): F0 C3 FD 00 D6 00 3F 36 D8 05 FF 00 FF 00 AF 27
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630706, 0x:FDC3B2
+00> Built Payload: P24=0xFDC3B2, PT100Raw=0x00D6, CRC16=0x1430
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): B2 C3 FD 00 D6 00 30 14 FB 04 FF 00 FD 00 94 D4
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630975, 0x:FDC4BF
+00> Built Payload: P24=0xFDC4BF, PT100Raw=0x00D6, CRC16=0xC984
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): BF C4 FD 00 D6 00 84 C9 BA 05 FF 00 01 01 26 C5
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631039, 0x:FDC4FF
+00> Built Payload: P24=0xFDC4FF, PT100Raw=0x00D6, CRC16=0x098A
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): FF C4 FD 00 D6 00 8A 09 E9 05 FF 00 FF 00 AB 06
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630862, 0x:FDC44E
+00> Built Payload: P24=0xFDC44E, PT100Raw=0x00D4, CRC16=0x8890
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 4E C4 FD 00 D4 00 90 88 FE 04 FF 00 FF 00 95 E1
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1429, ADC microVolts = 1151568
+00> PT1000: calculated resistance = 1081179 mOhm (1081.179 Ohm), temp_x10 = 208
+00> PM: pt1000ReadTemperature_x10 OK, temp=208
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630924, 0x:FDC48C
+00> Built Payload: P24=0xFDC48C, PT100Raw=0x00D0, CRC16=0xAA82
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 8C C4 FD 00 D0 00 82 AA D6 04 FF 00 FD 00 92 A9
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1429, ADC microVolts = 1151568
+00> PT1000: calculated resistance = 1081179 mOhm (1081.179 Ohm), temp_x10 = 208
+00> PM: pt1000ReadTemperature_x10 OK, temp=208
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631081, 0x:FDC529
+00> Built Payload: P24=0xFDC529, PT100Raw=0x00D0, CRC16=0x9FA7
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 29 C5 FD 00 D0 00 A7 9F 55 05 FF 00 FD 00 B0 9A
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630894, 0x:FDC46E
+00> Built Payload: P24=0xFDC46E, PT100Raw=0x00D6, CRC16=0x8896
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 6E C4 FD 00 D6 00 96 88 88 05 FF 00 01 01 22 D7
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630751, 0x:FDC3DF
+00> Built Payload: P24=0xFDC3DF, PT100Raw=0x00D6, CRC16=0xA938
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): DF C3 FD 00 D6 00 38 A9 BE 04 FF 00 FD 00 9A 41
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630739, 0x:FDC3D3
+00> Built Payload: P24=0xFDC3D3, PT100Raw=0x00D6, CRC16=0x6538
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): D3 C3 FD 00 D6 00 38 65 10 06 FF 00 01 01 7A CF
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631167, 0x:FDC57F
+00> Built Payload: P24=0xFDC57F, PT100Raw=0x00D6, CRC16=0x09A8
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 7F C5 FD 00 D6 00 A8 09 62 05 FF 00 FF 00 B5 BD
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630971, 0x:FDC4BB
+00> Built Payload: P24=0xFDC4BB, PT100Raw=0x00D6, CRC16=0x4D85
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): BB C4 FD 00 D6 00 85 4D 2E 06 FF 00 FF 00 FF B1
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1431, ADC microVolts = 1153184
+00> PT1000: calculated resistance = 1082746 mOhm (1082.746 Ohm), temp_x10 = 212
+00> PM: pt1000ReadTemperature_x10 OK, temp=212
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631056, 0x:FDC510
+00> Built Payload: P24=0xFDC510, PT100Raw=0x00D4, CRC16=0x36A0
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 10 C5 FD 00 D4 00 A0 36 DD 05 FF 00 FD 00 AE 12
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631130, 0x:FDC55A
+00> Built Payload: P24=0xFDC55A, PT100Raw=0x00D6, CRC16=0x3CAF
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 5A C5 FD 00 D6 00 AF 3C 68 05 FF 00 FF 00 B5 17
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630886, 0x:FDC466
+00> Built Payload: P24=0xFDC466, PT100Raw=0x00D6, CRC16=0xC097
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 66 C4 FD 00 D6 00 97 C0 58 06 FF 00 FF 00 F4 E7
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631012, 0x:FDC4E4
+00> Built Payload: P24=0xFDC4E4, PT100Raw=0x00D6, CRC16=0xE289
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): E4 C4 FD 00 D6 00 89 E2 A0 05 FF 00 FF 00 A5 5F
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630896, 0x:FDC470
+00> Built Payload: P24=0xFDC470, PT100Raw=0x00D6, CRC16=0x3695
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 70 C4 FD 00 D6 00 95 36 1C 06 FF 00 FF 00 FB A3
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16631037, 0x:FDC4FD
+00> Built Payload: P24=0xFDC4FD, PT100Raw=0x00D6, CRC16=0xEB8B
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): FD C4 FD 00 D6 00 8B EB B3 05 FF 00 FD 00 A6 9C
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630873, 0x:FDC459
+00> Built Payload: P24=0xFDC459, PT100Raw=0x00D6, CRC16=0xCF92
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 59 C4 FD 00 D6 00 92 CF 0D 06 FF 00 FF 00 F8 E2
+00> PM: before pt1000ReadTemperature_x10
+00> PT1000: localRaw: 1432, ADC microVolts = 1154000
+00> PT1000: calculated resistance = 1083537 mOhm (1083.537 Ohm), temp_x10 = 214
+00> PM: pt1000ReadTemperature_x10 OK, temp=214
+00> PM: before nsa2300StartMeasurement
+00> PM: before nsa2300WaitForDataReady
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x00
+00> NSA2300: STATUS=0x01
+00> PM: nsa2300ReadPressureOutputSingle OK: 16630866, 0x:FDC452
+00> Built Payload: P24=0xFDC452, PT100Raw=0x00D6, CRC16=0xB493
+00> Payload Manager: built payload of 8 bytes
+00> HDD I2C Mode: 0xD1
+00> HDD I2C Write Mode D1 succeeded
+00> HDD I2C Ready: 0x08
+00> HDD I2C Read Ready indicates data ready
+00> HDD I2C Read Data of 8 bytes succeeded
+00> HDD I2C Write Ready 0 succeeded
+00> Published Payload Data (16 bytes): 52 C4 FD 00 D6 00 93 B4 8A 05 FF 00 FD 00 A3 F5
+00> IRQ=38 START=7 RXTRIG=5 TXTRIG=4 TXDONE=16 RXDONE=0 STOP=4 OF=0 DEF=0 IIDX=24 gRxCount=0 P0=0x81 P1=0x00
+00> 
+00> HDD I2C Read Data ob

@@ -170,10 +170,7 @@ static bool i2cWriteReg8(uint8_t targetAddress, uint8_t* txBuf,
   i2cTransaction.readCount = 0;
   i2cTransaction.targetAddress = targetAddress;
 
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
-    return false;
-  }
-  return true;
+  return i2cTransferAndWait(&i2cTransaction);
 }
 
 static bool i2cReadReg8(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
@@ -192,7 +189,7 @@ static bool i2cReadReg8(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
   i2cTransaction.readCount = 1;
   i2cTransaction.targetAddress = targetAddress;
 
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
+  if (!i2cTransferAndWait(&i2cTransaction)) {
     return false;
   }
   *value = rxBuf[0];
@@ -215,7 +212,7 @@ static bool i2cReadRegN(uint8_t targetAddress, uint8_t* txBuf, size_t txBufSize,
   i2cTransaction.readCount = (uint16_t)outLen;
   i2cTransaction.targetAddress = targetAddress;
 
-  if (!I2C_transfer(g_i2cHandle, &i2cTransaction)) {
+  if (!i2cTransferAndWait(&i2cTransaction)) {
     return false;
   }
 
@@ -266,8 +263,8 @@ static void i2cErrorHandler(I2C_Transaction* transaction) {
 bool nsa2300Init() {
   I2C_Params_init(&g_i2cParams);
   g_i2cParams.bitRate = I2C_100kHz;
-  g_i2cParams.transferMode = I2C_MODE_BLOCKING;
-  // g_i2cParams.transferCallbackFxn = i2cTransferCallback;
+  g_i2cParams.transferMode = I2C_MODE_CALLBACK;
+  g_i2cParams.transferCallbackFxn = i2cTransferCallback;
   g_i2cHandle = I2C_open(CONFIG_I2C_0, &g_i2cParams);
   if (g_i2cHandle == NULL) {
     SEGGER_RTT_printf(0, "NSA2300: Error initializing I2C\n");
@@ -348,6 +345,14 @@ bool nsa2300WaitForDataReady() {
         SEGGER_RTT_printf(0, "NSA2300: STATUS read failing repeatedly (%lu times). I2C handle null? %s\n",
                           (unsigned long)consecutiveFail,
                           (g_i2cHandle == NULL) ? "YES" : "NO");
+      }
+      if (consecutiveFail >= 3u) {
+        /* Bus is persistently stuck (hot-plug glitch held SDA/SCL low).
+         * Break now so the caller can reinitialise the I2C controller and
+         * the NSA2300 config registers before retrying. */
+        SEGGER_RTT_printf(0, "NSA2300: STATUS read failed %lu times; aborting poll\n",
+                          (unsigned long)consecutiveFail);
+        break;
       }
       usleep(pollDelayUs);
       continue;

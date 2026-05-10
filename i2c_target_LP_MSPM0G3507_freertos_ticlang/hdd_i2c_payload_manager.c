@@ -142,6 +142,23 @@ void *payloadManagerThread(void *arg0) {
         SEGGER_RTT_printf(0, "PM: before nsa2300StartMeasurement\n");
         if (!nsa2300StartMeasurement()) {
             SEGGER_RTT_printf(0, "PM: nsa2300StartMeasurement FAILED\n");
+            nsa2300ConsecFail++;
+            if (nsa2300ConsecFail >= 3u) {
+                SEGGER_RTT_printf(0, "PM: NSA2300 failed %u consecutive times; reinitializing I2C and sensor\n",
+                                  (unsigned)nsa2300ConsecFail);
+                nsa2300ConsecFail = 0u;
+                nas2300Deinit();
+                usleep(50000);
+                for (uint8_t ri = 0; ri < nas2300_init_attempts; ri++) {
+                    if (nsa2300Init()) {
+                        SEGGER_RTT_printf(0, "PM: NSA2300 reinitialized on attempt %u\n", (unsigned)(ri + 1u));
+                        break;
+                    }
+                    SEGGER_RTT_printf(0, "PM: NSA2300 reinit attempt %u failed\n", (unsigned)(ri + 1u));
+                    usleep(200000);
+                }
+            }
+            usleep(200000);
             continue;
         }
         SEGGER_RTT_printf(0, "PM: before nsa2300WaitForDataReady\n");
@@ -171,6 +188,7 @@ void *payloadManagerThread(void *arg0) {
         if (nsa2300ReadPressureOutputSingle(&pressureValue)) {
             SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureOutputSingle OK: %u, 0x:%x\n",
                             pressureValue, pressureValue);
+            nsa2300ConsecFail = 0u;
         } else {
             SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureOutputSingle FAILED\n");
             continue;

@@ -395,19 +395,28 @@ void I2C0_IRQHandler(void)
               gTxPacket[gTxCount++] = gTxResponseByte;
             }
           } else if (gLastRegAddr == REG_READY_0x81) {
-            gTxResponseByte = g_regReady;
-            DL_I2C_fillTargetTXFIFO(I2C0_INST, (void *)&g_regReady, 1);
+            /* Snapshot index+len AND pin txReadingBuffer atomically here.
+             * Pinning the buffer at REG_READY time (not REG_DATA time)
+             * closes the race window where PayloadManager could overwrite
+             * payloadBuf[reg82SnapshotIndex] between the 0x81 read and the
+             * subsequent 0x82 read, corrupting the data the master receives
+             * and causing intermittent CRC failures that eventually cause the
+             * master to stop polling permanently. */
+            UBaseType_t saved = taskENTER_CRITICAL_FROM_ISR();
+            reg82SnapshotIndex = activeIndex;
+            reg82SnapshotLen   = g_regReady;
+            txReadingBuffer    = reg82SnapshotIndex;
+            taskEXIT_CRITICAL_FROM_ISR(saved);
+            gTxResponseByte = reg82SnapshotLen;
+            DL_I2C_fillTargetTXFIFO(I2C0_INST, (void *)&reg82SnapshotLen, 1);
             if (gTxCount < gTxLen) {
               gTxPacket[gTxCount++] = gTxResponseByte;
             }
           } else if (gLastRegAddr == REG_DATA_0x82) {
             gReg82TxCount = 0;
             gI2cTxDoneCount = 0;
-            UBaseType_t saved = taskENTER_CRITICAL_FROM_ISR();
-            reg82SnapshotIndex = activeIndex;
-            reg82SnapshotLen = g_regReady;
-            txReadingBuffer = reg82SnapshotIndex;
-            taskEXIT_CRITICAL_FROM_ISR(saved);
+            /* reg82SnapshotIndex / reg82SnapshotLen / txReadingBuffer were
+             * all latched atomically when REG_READY (0x81) was read. */
             i2cTargetLoadReg82Chunk();
           } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
             /* Snapshot calibration bytes so a repeated-start READ of 0x83

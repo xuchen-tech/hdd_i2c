@@ -2,6 +2,7 @@
 
 #include "hdd_i2c_utils.h"
 #include "i2c_controller.h"
+#include "i2ctargetApp.h"
 
 /* RTOS header files */
 #include <FreeRTOS.h>
@@ -62,6 +63,22 @@ void PayloadManager_requestSampleFromISR(void) {
     portYIELD_FROM_ISR(hpw);
 }
 
+/* ---- Rolling average state (shared pressure + temperature ring buffer) ---- */
+#define AVG_BUF_MAX 32u
+static uint32_t g_pressureAvgBuf[AVG_BUF_MAX];
+static int32_t  g_tempAvgBuf[AVG_BUF_MAX];
+static uint8_t  g_avgBufHead  = 0u; /* next write index */
+static uint8_t  g_avgBufCount = 0u; /* valid entries (0..AVG_BUF_MAX) */
+
+/* Decode REG_CTRL bits[4:3] → sample count (8 / 16 / 32) */
+static uint8_t regCtrlAvgSamples(uint8_t ctrl) {
+    switch ((ctrl >> 3u) & 0x03u) {
+        case 0u: return 8u;
+        case 2u: return 32u;
+        default: return 16u; /* 0x01 default and 0x03 reserved → 16 */
+    }
+}
+
 void *payloadManagerThread(void *arg0) {
     bool ret;
     int16_t pt100Raw;
@@ -91,6 +108,26 @@ void *payloadManagerThread(void *arg0) {
     uint8_t nsa2300ConsecFail = 0u;
 
     while (1) {
+        /* If REG_CTRL bit 1 (input_swap) changed at runtime, reinitialize NSA2300 with the
+         * new P_CONFIG value and reset the rolling average buffer. */
+        if (I2CTarget_isNsa2300ReinitRequired()) {
+            I2CTarget_clearNsa2300ReinitRequired();
+            SEGGER_RTT_printf(0, "PM: NSA2300 reinit: input_swap changed in REG_CTRL\n");
+            nsa2300ConsecFail = 0u;
+            g_avgBufHead  = 0u;
+            g_avgBufCount = 0u;
+            nas2300Deinit();
+            usleep(50000);
+            for (uint8_t ri = 0; ri < nas2300_init_attempts; ri++) {
+                if (nsa2300Init()) {
+                    SEGGER_RTT_printf(0, "PM: NSA2300 reinit OK on attempt %u\n", (unsigned)(ri + 1u));
+                    break;
+                }
+                SEGGER_RTT_printf(0, "PM: NSA2300 reinit attempt %u failed\n", (unsigned)(ri + 1u));
+                usleep(200000);
+            }
+        }
+
         uint8_t readyToPublish = 0u;
 
         SEGGER_RTT_printf(0, "PM: before pt1000ReadTemperature_x10\n");
@@ -137,6 +174,33 @@ void *payloadManagerThread(void *arg0) {
         } else {
             SEGGER_RTT_printf(0, "PM: nsa2300ReadPressureOutputSingle FAILED\n");
             continue;
+        }
+
+        /* Update rolling average ring buffer */
+        g_pressureAvgBuf[g_avgBufHead] = pressureValue;
+        g_tempAvgBuf[g_avgBufHead]     = (int32_t)pt100Raw;
+        g_avgBufHead = (uint8_t)((g_avgBufHead + 1u) % AVG_BUF_MAX);
+        if (g_avgBufCount < AVG_BUF_MAX) { g_avgBufCount++; }
+
+        /* Apply rolling average when REG_CTRL bit 2 is set */
+        {
+            uint8_t regCtrl = I2CTarget_getRegCtrl();
+            if (regCtrl & REG_CTRL_BIT2_AVERAGING) {
+                uint8_t n = regCtrlAvgSamples(regCtrl);
+                if (n > g_avgBufCount) { n = g_avgBufCount; }
+                if (n == 0u) { n = 1u; }
+                uint32_t pressureSum = 0u;
+                int32_t  tempSum     = 0;
+                for (uint8_t k = 0u; k < n; k++) {
+                    uint8_t idx = (uint8_t)((g_avgBufHead + AVG_BUF_MAX - 1u - k) % AVG_BUF_MAX);
+                    pressureSum += g_pressureAvgBuf[idx];
+                    tempSum     += g_tempAvgBuf[idx];
+                }
+                pressureValue = pressureSum / (uint32_t)n;
+                pt100Raw      = (int16_t)(tempSum / (int32_t)n);
+                SEGGER_RTT_printf(0, "PM: rolling avg (%u samples): pressure=%lu temp_x10=%d\n",
+                                  (unsigned)n, (unsigned long)pressureValue, (int)pt100Raw);
+            }
         }
 
         const uint8_t payloadLen = buildDataPayload(dataBuffer, sizeof(dataBuffer), pressureValue, (uint16_t)pt100Raw);

@@ -75,6 +75,8 @@ static volatile uint8_t g_regReady = 0x8; /* reg 0x81: Ready */
 static volatile uint8_t g_readyPayload[READY_PAYLOAD_MAX_LEN_BYTES] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}; /* reg 0x82: Data */
 static volatile uint8_t g_errorCode = 0x00;      /* reg 0x83: Error Code */
+static volatile uint8_t g_regCtrl = REG_CTRL_DEFAULT; /* reg 0x84: Control */
+static volatile bool g_nsa2300ReinitRequired = false;  /* set by ISR when input_swap changes */
 /* Calibration write: ISR stores 8 received bytes here and sets pending flag; 
  * mainThread will perform the flash write in task context. */
 static volatile uint8_t gCalibrationBuf[8];
@@ -147,6 +149,18 @@ void updatePayloadData(uint8_t* data, uint8_t len) {
     activeIndex = inactive;
 
     taskEXIT_CRITICAL();
+}
+
+uint8_t I2CTarget_getRegCtrl(void) {
+  return (uint8_t)g_regCtrl;
+}
+
+bool I2CTarget_isNsa2300ReinitRequired(void) {
+  return g_nsa2300ReinitRequired;
+}
+
+void I2CTarget_clearNsa2300ReinitRequired(void) {
+  g_nsa2300ReinitRequired = false;
 }
 
 /* Maximum size of TX packet */
@@ -400,6 +414,11 @@ void I2C0_IRQHandler(void)
              * returns the stored calibration payload. */
             i2cTargetPrepareReg83Snapshot();
             i2cTargetLoadReg83Chunk();
+          } else if (gLastRegAddr == REG_CTRL_0x84) {
+            DL_I2C_fillTargetTXFIFO(I2C0_INST, (void *)&g_regCtrl, 1);
+            if (gTxCount < gTxLen) {
+              gTxPacket[gTxCount++] = g_regCtrl;
+            }
           } else {
             gTxResponseByte = 0x00;
             DL_I2C_transmitTargetData(I2C0_INST, gTxResponseByte);
@@ -423,8 +442,14 @@ void I2C0_IRQHandler(void)
               PayloadManager_requestSampleFromISR();
             }
           } else if ((gRxCount == 2) && (gLastRegAddr == REG_READY_0x81)) {
-            g_regReady = data;
+            // g_regReady = data;
             gTxResponseByte = g_regReady;
+          } else if ((gRxCount == 2) && (gLastRegAddr == REG_CTRL_0x84)) {
+            const uint8_t prevCtrl = g_regCtrl;
+            g_regCtrl = data;
+            if ((prevCtrl ^ data) & REG_CTRL_BIT1_INPUT_SWAP) {
+              g_nsa2300ReinitRequired = true;
+            }
           } else if ((gLastRegAddr == REG_CALIBRATION_0x83) && (gRxCount == 9)) {
             /* Received reg + 8 bytes payload. Copy into calibration buffer and
              * notify calibration task. Keep ISR work minimal and ISR-safe. */

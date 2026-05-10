@@ -271,10 +271,18 @@ bool nsa2300Init() {
     return false;
   }
   usleep(100000); /* 100ms power-up delay */
+  /* Compute P_CONFIG: base value, then add input_swap bit if REG_CTRL bit 1 is set */
+  uint8_t pConfig = NSA2300_REG_P_CONFIG_BASE;
+  if (I2CTarget_getRegCtrl() & REG_CTRL_BIT1_INPUT_SWAP) {
+    pConfig |= NSA2300_REG_P_CONFIG_INPUT_SWAP_BIT;
+  }
+  SEGGER_RTT_printf(0, "NSA2300: P_CONFIG=0x%02x (input_swap=%u)\n",
+                    (unsigned)pConfig,
+                    (unsigned)((pConfig >> 6) & 1u));
   if (nsa2300WriteReg8(txBuffer, sizeof(txBuffer), NSA2300_REG_SYS_CONFIG,
                        NSA2300_REG_SYS_CONFIG_DEFAULT) == false ||
       nsa2300WriteReg8(txBuffer, sizeof(txBuffer), NSA2300_REG_P_CONFIG,
-                       NSA2300_REG_P_CONFIG_DEFAULT) == false) {
+                       pConfig) == false) {
     SEGGER_RTT_printf(0, "NSA2300: Error writing config registers\n");
     I2C_close(g_i2cHandle);
     g_i2cHandle = NULL;
@@ -396,7 +404,8 @@ bool nsa2300ReadPressureOutputSingle(uint32_t* value) {
     return false;
   }
 
-  if (!nsa2300CalibrationEnabled()) {
+  /* REG_CTRL bit 0: 0=output raw, 1=apply calibration */
+  if (!(I2CTarget_getRegCtrl() & REG_CTRL_BIT0_CALIBRATION) || !nsa2300CalibrationEnabled()) {
     *value = raw;
     return true;
   }

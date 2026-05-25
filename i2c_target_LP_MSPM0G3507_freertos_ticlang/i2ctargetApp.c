@@ -87,11 +87,10 @@ static volatile uint8_t payloadBuf[2][READY_PAYLOAD_MAX_LEN_BYTES] = {
   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B}
 };
 
-#define INVALID_BUFFER_INDEX 0xFFu
 static volatile uint8_t activeIndex = 0;
-static volatile uint8_t txReadingBuffer = INVALID_BUFFER_INDEX;
-static volatile uint8_t reg82SnapshotIndex;
 static volatile uint8_t reg82SnapshotLen;
+static volatile uint8_t reg82Snapshot[READY_PAYLOAD_MAX_LEN_BYTES];
+static volatile bool    reg82SnapshotValid = false;
 static volatile uint8_t reg83Snapshot[8];
 static volatile uint8_t reg83SnapshotLen;
 static volatile uint8_t gReg83TxCount = 0;
@@ -110,24 +109,6 @@ void updatePayloadData(uint8_t* data, uint8_t len) {
     taskENTER_CRITICAL();
 
     inactive = (uint8_t)(activeIndex ^ 1);
-
-    /* 防止覆盖正在发送的 buffer */
-    if (inactive == txReadingBuffer) {
-
-        /*
-         * 当前 inactive buffer 正被 I2C TX 使用。
-         *
-         * 双buffer无法继续安全切换。
-         *
-         * 方案：
-         * 1. 丢弃本次更新（推荐）
-         * 2. 或等待
-         */
-
-        taskEXIT_CRITICAL();
-
-        return;
-    }
 
     taskEXIT_CRITICAL();
 
@@ -206,9 +187,23 @@ static void i2cTargetLoadReg82Chunk(void) {
           : remaining;
 
   wrote = DL_I2C_fillTargetTXFIFO(
-      I2C0_INST, (void *)&payloadBuf[reg82SnapshotIndex][gReg82TxCount],
+      I2C0_INST, (void *)&reg82Snapshot[gReg82TxCount],
       chunkLen);
   gReg82TxCount = (uint8_t)(gReg82TxCount + (uint8_t)wrote);
+}
+
+static void i2cTargetPrepareReg82Snapshot(void) {
+  uint8_t len = g_regReady;
+  uint8_t index = activeIndex;
+
+  if (len > READY_PAYLOAD_MAX_LEN_BYTES) {
+    len = READY_PAYLOAD_MAX_LEN_BYTES;
+  }
+
+  memcpy((void *)reg82Snapshot, (const void *)payloadBuf[index], len);
+  reg82SnapshotLen = len;
+  reg82SnapshotValid = true;
+  gReg82TxCount = 0u;
 }
 
 static void i2cTargetPrepareReg83Snapshot(void) {
@@ -366,7 +361,11 @@ void I2C0_IRQHandler(void)
        * Clearing `gLastRegAddr` / `gReg82TxCount` here truncates multi-block
        * reads after the first FIFO chunk. Fresh transactions are already
        * reset by STOP/TX_DONE cleanup.
-       */
+       *
+       * Do not invalidate the 0x82 data snapshot here. A normal transfer reads
+       * 0x81 first, issues STOP, then starts a new transfer for 0x82. The
+       * snapshot must survive that START and is released after the 0x82 read
+       * completes. */
       dataRx = false;
       regPointerLatched = false;
       gRxCount = 0;
@@ -387,6 +386,10 @@ void I2C0_IRQHandler(void)
           /* New register pointer received: clear stale TX bytes and preload
            * first response byte to avoid controller blocking at read start. */
           DL_I2C_flushTargetTXFIFO(I2C0_INST);
+          if ((gLastRegAddr != REG_READY_0x81) &&
+              (gLastRegAddr != REG_DATA_0x82)) {
+            reg82SnapshotValid = false;
+          }
 
           if (gLastRegAddr == REG_MODE_0x80) {
             gTxResponseByte = g_regMode;
@@ -395,18 +398,11 @@ void I2C0_IRQHandler(void)
               gTxPacket[gTxCount++] = gTxResponseByte;
             }
           } else if (gLastRegAddr == REG_READY_0x81) {
-            /* Snapshot index+len AND pin txReadingBuffer atomically here.
-             * Pinning the buffer at REG_READY time (not REG_DATA time)
-             * closes the race window where PayloadManager could overwrite
-             * payloadBuf[reg82SnapshotIndex] between the 0x81 read and the
-             * subsequent 0x82 read, corrupting the data the master receives
-             * and causing intermittent CRC failures that eventually cause the
-             * master to stop polling permanently. */
-            UBaseType_t saved = taskENTER_CRITICAL_FROM_ISR();
-            reg82SnapshotIndex = activeIndex;
-            reg82SnapshotLen   = g_regReady;
-            txReadingBuffer    = reg82SnapshotIndex;
-            taskEXIT_CRITICAL_FROM_ISR(saved);
+            /* Copy the complete payload when the master reads 0x81. The
+             * subsequent 0x82 read is served from this immutable snapshot, so
+             * payload manager updates between the two I2C transactions cannot
+             * corrupt the frame and trip the master's CRC check. */
+            i2cTargetPrepareReg82Snapshot();
             gTxResponseByte = reg82SnapshotLen;
             DL_I2C_fillTargetTXFIFO(I2C0_INST, (void *)&reg82SnapshotLen, 1);
             if (gTxCount < gTxLen) {
@@ -415,8 +411,11 @@ void I2C0_IRQHandler(void)
           } else if (gLastRegAddr == REG_DATA_0x82) {
             gReg82TxCount = 0;
             gI2cTxDoneCount = 0;
-            /* reg82SnapshotIndex / reg82SnapshotLen / txReadingBuffer were
-             * all latched atomically when REG_READY (0x81) was read. */
+            /* If the master reads 0x82 without a prior 0x81 length read, build
+             * a best-effort snapshot from the current active payload. */
+            if (!reg82SnapshotValid) {
+              i2cTargetPrepareReg82Snapshot();
+            }
             i2cTargetLoadReg82Chunk();
           } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
             /* Snapshot calibration bytes so a repeated-start READ of 0x83
@@ -504,13 +503,15 @@ void I2C0_IRQHandler(void)
       gI2cTxDoneCount++;
       /* Keep transaction state until STOP so multi-chunk REG_DATA_0x82 reads
        * can continue refilling the TX FIFO. Clearing here truncates reads
-       * after the first 8-byte chunk.
-       */
+       * after the first FIFO chunk. */
       break;
 
     case DL_I2C_IIDX_TARGET_STOP:
       /* no printing from ISR */
       gI2cStopCount++;
+      if (gLastRegAddr == REG_DATA_0x82) {
+        reg82SnapshotValid = false;
+      }
       dataRx = false;
       gRxCount = 0;
       gLastRegAddr = 0x00;
@@ -519,8 +520,6 @@ void I2C0_IRQHandler(void)
       gReg83TxCount = 0;
       reg83SnapshotLen = 0;
       regPointerLatched = false;
-      /* 释放发送 buffer */
-      txReadingBuffer = INVALID_BUFFER_INDEX;
       GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
       break;
 

@@ -114,7 +114,16 @@ void SYSCFG_DL_I2C_init(void)
 
     /* Configure Target Mode */
     DL_I2C_setTargetOwnAddress(I2C0_INST, 0x50);
-    DL_I2C_setTargetTXFIFOThreshold(I2C0_INST, DL_I2C_TX_FIFO_LEVEL_BYTES_4);
+    /* TX FIFO trigger threshold: fire TXFIFO_TRIGGER as soon as FIFO drops to
+     * 6 bytes (i.e. only 2 bytes have been clocked out by the master). This
+     * gives the refill ISR ~540us @100kHz of headroom before the FIFO can
+     * underrun, reducing the risk that the master clocks past the end of the
+     * already-loaded chunk and reads stale/garbage bytes (which would fail
+     * the application-level CRC and cause the master to stop polling).
+     * Previous value (BYTES_4) gave only ~360us; raising it to BYTES_6 widens
+     * the safety margin by 50% with negligible CPU cost (smaller refill
+     * chunks, slightly more TXFIFO_TRIGGER interrupts per 16-byte read). */
+    DL_I2C_setTargetTXFIFOThreshold(I2C0_INST, DL_I2C_TX_FIFO_LEVEL_BYTES_6);
     DL_I2C_setTargetRXFIFOThreshold(I2C0_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_1);
     DL_I2C_enableTargetTXEmptyOnTXRequest(I2C0_INST);
 

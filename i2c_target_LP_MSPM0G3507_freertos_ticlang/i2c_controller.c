@@ -41,12 +41,17 @@ static volatile bool g_i2cTransferStatus = false;
 
 #define I2C_TRANSFER_WAIT_MS 200
 #define I2C_TRANSFER_MAX_ATTEMPTS 2
+#define I2C1_SDA_MASK (1u << GPIO_I2C1_SDA_PIN)
+#define I2C1_SCL_MASK (1u << GPIO_I2C1_SCL_PIN)
+#define I2C_BUS_CLEAR_PULSES 9u
+#define I2C_BUS_CLEAR_DELAY_CYCLES (I2C_CLOCK_MHZ * 50u)
 
 static void i2cErrorHandler(I2C_Transaction* transaction);
 static void i2cTransferCallback(I2C_Handle handle,
                                 I2C_Transaction* transaction,
                                 bool transferStatus);
 static bool i2cTransferAndWait(I2C_Transaction* transaction);
+static void i2cClearBus(void);
 static bool i2cRecoverController(void);
 
 static void i2cTransferCallback(I2C_Handle handle,
@@ -69,6 +74,8 @@ static bool i2cRecoverController(void) {
     g_i2cHandle = NULL;
   }
 
+  i2cClearBus();
+
   DL_I2C_reset(I2C1_INST);
   DL_I2C_enablePower(I2C1_INST);
   delay_cycles(POWER_STARTUP_DELAY);
@@ -84,6 +91,50 @@ static bool i2cRecoverController(void) {
 
   SEGGER_RTT_printf(0, "I2C controller recovered\n");
   return true;
+}
+
+static void i2cClearBus(void) {
+  uint32_t pulse;
+
+  DL_GPIO_initDigitalOutput(GPIO_I2C1_IOMUX_SCL);
+  DL_GPIO_initDigitalOutput(GPIO_I2C1_IOMUX_SDA);
+  DL_GPIO_setPins(GPIOA, I2C1_SCL_MASK | I2C1_SDA_MASK);
+  DL_GPIO_disableOutput(GPIOA, I2C1_SCL_MASK | I2C1_SDA_MASK);
+  delay_cycles(I2C_BUS_CLEAR_DELAY_CYCLES);
+
+  for (pulse = 0; pulse < I2C_BUS_CLEAR_PULSES; ++pulse) {
+    DL_GPIO_clearPins(GPIOA, I2C1_SCL_MASK);
+    DL_GPIO_enableOutput(GPIOA, I2C1_SCL_MASK);
+    delay_cycles(I2C_BUS_CLEAR_DELAY_CYCLES);
+    DL_GPIO_setPins(GPIOA, I2C1_SCL_MASK);
+    DL_GPIO_disableOutput(GPIOA, I2C1_SCL_MASK);
+    delay_cycles(I2C_BUS_CLEAR_DELAY_CYCLES);
+
+    if ((DL_GPIO_readPins(GPIOA, I2C1_SDA_MASK) & I2C1_SDA_MASK) != 0u) {
+      break;
+    }
+  }
+
+  DL_GPIO_clearPins(GPIOA, I2C1_SDA_MASK);
+  DL_GPIO_enableOutput(GPIOA, I2C1_SDA_MASK);
+  delay_cycles(I2C_BUS_CLEAR_DELAY_CYCLES);
+  DL_GPIO_setPins(GPIOA, I2C1_SCL_MASK);
+  DL_GPIO_disableOutput(GPIOA, I2C1_SCL_MASK);
+  delay_cycles(I2C_BUS_CLEAR_DELAY_CYCLES);
+  DL_GPIO_setPins(GPIOA, I2C1_SDA_MASK);
+  DL_GPIO_disableOutput(GPIOA, I2C1_SDA_MASK);
+  delay_cycles(I2C_BUS_CLEAR_DELAY_CYCLES);
+
+  DL_GPIO_initPeripheralInputFunctionFeatures(GPIO_I2C1_IOMUX_SDA,
+      GPIO_I2C1_IOMUX_SDA_FUNC, DL_GPIO_INVERSION_DISABLE,
+      DL_GPIO_RESISTOR_NONE, DL_GPIO_HYSTERESIS_DISABLE,
+      DL_GPIO_WAKEUP_DISABLE);
+  DL_GPIO_initPeripheralInputFunctionFeatures(GPIO_I2C1_IOMUX_SCL,
+      GPIO_I2C1_IOMUX_SCL_FUNC, DL_GPIO_INVERSION_DISABLE,
+      DL_GPIO_RESISTOR_NONE, DL_GPIO_HYSTERESIS_DISABLE,
+      DL_GPIO_WAKEUP_DISABLE);
+  DL_GPIO_enableHiZ(GPIO_I2C1_IOMUX_SDA);
+  DL_GPIO_enableHiZ(GPIO_I2C1_IOMUX_SCL);
 }
 
 static bool i2cTransferAndWait(I2C_Transaction* transaction) {

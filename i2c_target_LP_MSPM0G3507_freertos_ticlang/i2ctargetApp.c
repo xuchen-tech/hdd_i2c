@@ -95,10 +95,6 @@ static volatile uint8_t reg83Snapshot[8];
 static volatile uint8_t reg83SnapshotLen;
 static volatile uint8_t gReg83TxCount = 0;
 
-volatile size_t wrote = 0;
-
-#define I2C_TARGET_TX_FIFO_CHUNK_SIZE 8u
-
 void updatePayloadData(uint8_t* data, uint8_t len) {
   uint8_t inactive;
 
@@ -167,29 +163,35 @@ static volatile uint32_t gI2cStopCount = 0;
 static volatile uint32_t gI2cRxDoneCount = 0;
 static volatile uint32_t gI2cTxTrigCount = 0;
 static volatile uint32_t gI2cTxDoneCount = 0;
+static volatile uint32_t gI2cTxEmptyCount = 0;
 static volatile uint32_t gI2cRxOverflowCount = 0;
+static volatile uint32_t gI2cTxUnderflowCount = 0;
 static volatile uint32_t gI2cDefaultCount = 0;
 static volatile uint32_t gI2cLastIidx = 0;
+static volatile uint32_t gReg82ShortLoadCount = 0;
 static volatile uint8_t gLastRegAddr = 0x00;
 static volatile uint8_t gTxResponseByte = 0xA5;
 static volatile uint8_t gReg82TxCount = 0;
 static volatile uint32_t gI2cPauseDepth = 0;
 
 static void i2cTargetLoadReg82Chunk(void) {
-  if (gReg82TxCount >= reg82SnapshotLen) {
-    return;
+  while (gReg82TxCount < reg82SnapshotLen) {
+    if (!DL_I2C_transmitTargetDataCheck(
+            I2C0_INST, reg82Snapshot[gReg82TxCount])) {
+      break;
+    }
+    gReg82TxCount++;
   }
+}
 
-  size_t remaining = (size_t)(reg82SnapshotLen - gReg82TxCount);
-  size_t chunkLen =
-      (remaining > I2C_TARGET_TX_FIFO_CHUNK_SIZE)
-          ? I2C_TARGET_TX_FIFO_CHUNK_SIZE
-          : remaining;
-
-  wrote = DL_I2C_fillTargetTXFIFO(
-      I2C0_INST, (void *)&reg82Snapshot[gReg82TxCount],
-      chunkLen);
-  gReg82TxCount = (uint8_t)(gReg82TxCount + (uint8_t)wrote);
+static void i2cTargetLoadReg82OnRequest(void) {
+  if ((gReg82TxCount < reg82SnapshotLen) &&
+      ((DL_I2C_getTargetStatus(I2C0_INST) &
+        DL_I2C_TARGET_STATUS_TRANSMIT_REQUEST) != 0u)) {
+    DL_I2C_transmitTargetData(I2C0_INST, reg82Snapshot[gReg82TxCount]);
+    gReg82TxCount++;
+  }
+  i2cTargetLoadReg82Chunk();
 }
 
 static void i2cTargetPrepareReg82Snapshot(void) {
@@ -224,19 +226,23 @@ static void i2cTargetPrepareReg83Snapshot(void) {
 }
 
 static void i2cTargetLoadReg83Chunk(void) {
-  if (gReg83TxCount >= reg83SnapshotLen) {
-    return;
+  while (gReg83TxCount < reg83SnapshotLen) {
+    if (!DL_I2C_transmitTargetDataCheck(
+            I2C0_INST, reg83Snapshot[gReg83TxCount])) {
+      break;
+    }
+    gReg83TxCount++;
   }
+}
 
-  size_t remaining = (size_t)(reg83SnapshotLen - gReg83TxCount);
-  size_t chunkLen =
-      (remaining > I2C_TARGET_TX_FIFO_CHUNK_SIZE)
-          ? I2C_TARGET_TX_FIFO_CHUNK_SIZE
-          : remaining;
-
-  wrote = DL_I2C_fillTargetTXFIFO(
-      I2C0_INST, (void *)&reg83Snapshot[gReg83TxCount], chunkLen);
-  gReg83TxCount = (uint8_t)(gReg83TxCount + (uint8_t)wrote);
+static void i2cTargetLoadReg83OnRequest(void) {
+  if ((gReg83TxCount < reg83SnapshotLen) &&
+      ((DL_I2C_getTargetStatus(I2C0_INST) &
+        DL_I2C_TARGET_STATUS_TRANSMIT_REQUEST) != 0u)) {
+    DL_I2C_transmitTargetData(I2C0_INST, reg83Snapshot[gReg83TxCount]);
+    gReg83TxCount++;
+  }
+  i2cTargetLoadReg83Chunk();
 }
 /* Log task prototype */
 static void i2cLogTask(void *pvParameters);
@@ -256,7 +262,9 @@ void I2CTarget_pauseService(void) {
                             DL_I2C_INTERRUPT_TARGET_START |
                             DL_I2C_INTERRUPT_TARGET_RXFIFO_TRIGGER |
                             DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
+                            DL_I2C_INTERRUPT_TARGET_TXFIFO_EMPTY |
                             DL_I2C_INTERRUPT_TARGET_TX_DONE |
+                            DL_I2C_INTERRUPT_TARGET_TXFIFO_UNDERFLOW |
                             DL_I2C_INTERRUPT_TARGET_STOP);
   }
   taskEXIT_CRITICAL();
@@ -271,7 +279,9 @@ void I2CTarget_resumeService(void) {
                              DL_I2C_INTERRUPT_TARGET_START |
                              DL_I2C_INTERRUPT_TARGET_RXFIFO_TRIGGER |
                              DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
+                             DL_I2C_INTERRUPT_TARGET_TXFIFO_EMPTY |
                              DL_I2C_INTERRUPT_TARGET_TX_DONE |
+                             DL_I2C_INTERRUPT_TARGET_TXFIFO_UNDERFLOW |
                              DL_I2C_INTERRUPT_TARGET_STOP);
       NVIC_EnableIRQ(I2C0_INT_IRQn);
     }
@@ -302,11 +312,13 @@ void* mainThread(void* arg0) {
   gRxLen   = I2C_RX_MAX_PACKET_SIZE;
   /* Enable RX FIFO trigger interrupt as well as TX FIFO trigger */
   DL_I2C_enableInterrupt(I2C0_INST,
-               DL_I2C_INTERRUPT_TARGET_START |
+                         DL_I2C_INTERRUPT_TARGET_START |
                          DL_I2C_INTERRUPT_TARGET_RXFIFO_TRIGGER |
-       DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
-                 DL_I2C_INTERRUPT_TARGET_TX_DONE |
-                            DL_I2C_INTERRUPT_TARGET_STOP);
+                         DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
+                         DL_I2C_INTERRUPT_TARGET_TXFIFO_EMPTY |
+                         DL_I2C_INTERRUPT_TARGET_TX_DONE |
+                         DL_I2C_INTERRUPT_TARGET_TXFIFO_UNDERFLOW |
+                         DL_I2C_INTERRUPT_TARGET_STOP);
 
   /* Create a low-priority task to drain the ring buffer and print logs
    * (uses blocking / potentially slow calls like SEGGER_RTT_printf)
@@ -333,12 +345,16 @@ void* mainThread(void* arg0) {
     GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_ON);
     SEGGER_RTT_printf(
         0,
-        "IRQ=%lu START=%lu RXTRIG=%lu TXTRIG=%lu TXDONE=%lu RXDONE=%lu STOP=%lu OF=%lu DEF=%lu IIDX=%lu gRxCount=%lu P0=0x%02x P1=0x%02x\n",
+        "IRQ=%lu START=%lu RXTRIG=%lu TXTRIG=%lu TXEMPTY=%lu TXDONE=%lu RXDONE=%lu STOP=%lu OF=%lu UF=%lu DEF=%lu IIDX=%lu R82TX=%u R82LEN=%u R82SHORT=%lu gRxCount=%lu P0=0x%02x P1=0x%02x\n",
         (unsigned long)gI2cIrqCount, (unsigned long)gI2cStartCount,
         (unsigned long)gI2cRxTrigCount, (unsigned long)gI2cTxTrigCount,
+        (unsigned long)gI2cTxEmptyCount,
         (unsigned long)gI2cTxDoneCount, (unsigned long)gI2cRxDoneCount,
         (unsigned long)gI2cStopCount, (unsigned long)gI2cRxOverflowCount,
+        (unsigned long)gI2cTxUnderflowCount,
         (unsigned long)gI2cDefaultCount, (unsigned long)gI2cLastIidx,
+        (unsigned)gReg82TxCount, (unsigned)reg82SnapshotLen,
+        (unsigned long)gReg82ShortLoadCount,
         (unsigned long)gRxCount, gRxPacket[0], gRxPacket[1]);
   }
 }
@@ -417,6 +433,9 @@ void I2C0_IRQHandler(void)
               i2cTargetPrepareReg82Snapshot();
             }
             i2cTargetLoadReg82Chunk();
+            if (gReg82TxCount < reg82SnapshotLen) {
+              gReg82ShortLoadCount++;
+            }
           } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
             /* Snapshot calibration bytes so a repeated-start READ of 0x83
              * returns the stored calibration payload. */
@@ -499,11 +518,29 @@ void I2C0_IRQHandler(void)
       }
       break;
 
+    case DL_I2C_IIDX_TARGET_TXFIFO_EMPTY:
+      gI2cTxEmptyCount++;
+      if (gLastRegAddr == REG_DATA_0x82) {
+        i2cTargetLoadReg82OnRequest();
+      } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
+        i2cTargetLoadReg83OnRequest();
+      }
+      break;
+
     case DL_I2C_IIDX_TARGET_TX_DONE:
       gI2cTxDoneCount++;
       /* Keep transaction state until STOP so multi-chunk REG_DATA_0x82 reads
        * can continue refilling the TX FIFO. Clearing here truncates reads
        * after the first FIFO chunk. */
+      break;
+
+    case DL_I2C_IIDX_TARGET_TXFIFO_UNDERFLOW:
+      gI2cTxUnderflowCount++;
+      if (gLastRegAddr == REG_DATA_0x82) {
+        i2cTargetLoadReg82OnRequest();
+      } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
+        i2cTargetLoadReg83OnRequest();
+      }
       break;
 
     case DL_I2C_IIDX_TARGET_STOP:

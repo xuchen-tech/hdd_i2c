@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include "hdd_i2c_config.h"
+#include "i2ctargetApp.h"
 
 /* Driver configuration */
 #include "ti_drivers_config.h"
@@ -40,11 +41,19 @@ static volatile bool g_i2cTransferDone = false;
 static volatile bool g_i2cTransferStatus = false;
 
 #define I2C_TRANSFER_WAIT_MS 200
-#define I2C_TRANSFER_MAX_ATTEMPTS 2
+#define I2C_TRANSFER_MAX_ATTEMPTS 4
+#define I2C_CLOCK_TIMEOUT_CYCLES (I2C_CLOCK_MHZ * 50000u)
 #define I2C1_SDA_MASK (1u << GPIO_I2C1_SDA_PIN)
 #define I2C1_SCL_MASK (1u << GPIO_I2C1_SCL_PIN)
 #define I2C_BUS_CLEAR_PULSES 9u
 #define I2C_BUS_CLEAR_DELAY_CYCLES (I2C_CLOCK_MHZ * 50u)
+/* Number of bus-clear cycles attempted inside a single recovery before the
+ * downstream slave is declared genuinely stuck.  A slave that is mid-clock-
+ * stretch may need more than one set of clock pulses to release SDA. */
+#define I2C_BUS_CLEAR_MAX_CYCLES 3u
+/* Settle time after reopening the peripheral so a slave that was clock
+ * stretching can finish its internal operation before the next transfer. */
+#define I2C_RECOVER_SETTLE_US 2000u
 
 static void i2cErrorHandler(I2C_Transaction* transaction);
 static void i2cTransferCallback(I2C_Handle handle,
@@ -53,6 +62,8 @@ static void i2cTransferCallback(I2C_Handle handle,
 static bool i2cTransferAndWait(I2C_Transaction* transaction);
 static void i2cClearBus(void);
 static bool i2cRecoverController(void);
+static bool i2cShouldRecoverTransaction(const I2C_Transaction* transaction);
+static bool i2cBusLinesIdle(void);
 
 static void i2cTransferCallback(I2C_Handle handle,
                                 I2C_Transaction* transaction,
@@ -69,13 +80,36 @@ static void i2cTransferCallback(I2C_Handle handle,
 }
 
 static bool i2cRecoverController(void) {
+  uint32_t clearCycle;
+  bool busIdle = false;
+
   if (g_i2cHandle != NULL) {
     I2C_close(g_i2cHandle);
     g_i2cHandle = NULL;
   }
 
-  i2cClearBus();
+  /* Bit-bang clock pulses until the slave releases SDA/SCL.  A single
+   * 9-pulse burst is not always enough for a slave that is mid-clock-stretch,
+   * so repeat the bus clear and verify the lines actually returned high
+   * before declaring the bus usable again. */
+  for (clearCycle = 0u; clearCycle < I2C_BUS_CLEAR_MAX_CYCLES; ++clearCycle) {
+    i2cClearBus();
+    if (i2cBusLinesIdle()) {
+      busIdle = true;
+      break;
+    }
+  }
 
+  if (!busIdle) {
+    SEGGER_RTT_printf(0,
+                      "I2C recovery: bus still held after %u clear cycles\n",
+                      (unsigned)I2C_BUS_CLEAR_MAX_CYCLES);
+  }
+
+  /* Hard-reset the I2C1 peripheral.  i2cClearBus() only bit-bangs the GPIO
+   * pins to release a stuck slave; it does not reset the I2C state machine.
+   * Without this reset the peripheral may be stuck mid-transfer and never
+   * generate interrupts, so the callback never fires. */
   DL_I2C_reset(I2C1_INST);
   DL_I2C_enablePower(I2C1_INST);
   delay_cycles(POWER_STARTUP_DELAY);
@@ -86,6 +120,20 @@ static bool i2cRecoverController(void) {
   g_i2cHandle = I2C_open(CONFIG_I2C_0, &g_i2cParams);
   if (g_i2cHandle == NULL) {
     SEGGER_RTT_printf(0, "I2C recovery failed: reopen controller failed\n");
+    return false;
+  }
+
+  I2C_setClockTimeout(g_i2cHandle, I2C_CLOCK_TIMEOUT_CYCLES);
+
+  /* Give a clock-stretching slave time to finish its internal operation
+   * before the next transfer so the immediately-following retry does not
+   * time out again. */
+  usleep(I2C_RECOVER_SETTLE_US);
+
+  if (!busIdle) {
+    /* Do not claim success while the bus is still physically held low; let
+     * the caller retry, which will pulse the clock again. */
+    SEGGER_RTT_printf(0, "I2C controller reopened but bus not idle\n");
     return false;
   }
 
@@ -137,6 +185,12 @@ static void i2cClearBus(void) {
   DL_GPIO_enableHiZ(GPIO_I2C1_IOMUX_SCL);
 }
 
+static bool i2cBusLinesIdle(void) {
+  uint32_t pins = DL_GPIO_readPins(GPIOA, I2C1_SCL_MASK | I2C1_SDA_MASK);
+  return (pins & (I2C1_SCL_MASK | I2C1_SDA_MASK)) ==
+         (I2C1_SCL_MASK | I2C1_SDA_MASK);
+}
+
 static bool i2cTransferAndWait(I2C_Transaction* transaction) {
   const TickType_t timeoutTicks = pdMS_TO_TICKS(I2C_TRANSFER_WAIT_MS);
   const void* const originalWriteBuf = transaction != NULL ? transaction->writeBuf : NULL;
@@ -165,7 +219,12 @@ static bool i2cTransferAndWait(I2C_Transaction* transaction) {
 
     if (!I2C_transfer(g_i2cHandle, transaction)) {
       i2cErrorHandler(transaction);
-      if ((attempt + 1u) < I2C_TRANSFER_MAX_ATTEMPTS && i2cRecoverController()) {
+      if ((attempt + 1u) < I2C_TRANSFER_MAX_ATTEMPTS &&
+          i2cShouldRecoverTransaction(transaction)) {
+        /* Run recovery and retry even if the bus is still held; the next
+         * attempt will pulse the clock again.  Aborting here on a
+         * still-stuck bus is what caused the cascade to stop updating. */
+        (void)i2cRecoverController();
         continue;
       }
       return false;
@@ -178,31 +237,51 @@ static bool i2cTransferAndWait(I2C_Transaction* transaction) {
                           "I2C callback wait timed out after %u ms (attempt %lu)\n",
                           (unsigned)I2C_TRANSFER_WAIT_MS,
                           (unsigned long)(attempt + 1u));
-        if ((attempt + 1u) < I2C_TRANSFER_MAX_ATTEMPTS && i2cRecoverController()) {
-          goto retry_transfer;
+        if ((attempt + 1u) < I2C_TRANSFER_MAX_ATTEMPTS) {
+          /* Recover and retry regardless of whether the bus came back idle
+           * this cycle; subsequent attempts keep pulsing the clock. */
+          (void)i2cRecoverController();
+          break; /* exit the while loop, goto next attempt */
         }
         return false;
       }
       vTaskDelay(pdMS_TO_TICKS(1));
     }
 
+    if (!g_i2cTransferDone) {
+      /* Timed out, next attempt */
+      continue;
+    }
+
     if (!g_i2cTransferStatus) {
       if (transaction != NULL) {
         i2cErrorHandler(transaction);
       }
-      if ((attempt + 1u) < I2C_TRANSFER_MAX_ATTEMPTS && i2cRecoverController()) {
+      if ((attempt + 1u) < I2C_TRANSFER_MAX_ATTEMPTS &&
+          i2cShouldRecoverTransaction(transaction)) {
+        (void)i2cRecoverController();
         continue;
       }
       return false;
     }
 
     return true;
-
-retry_transfer:
-    continue;
   }
 
   return false;
+}
+
+static bool i2cShouldRecoverTransaction(const I2C_Transaction* transaction) {
+  if (transaction == NULL) {
+    return false;
+  }
+
+  if ((transaction->status == I2C_STATUS_ADDR_NACK) &&
+      (transaction->targetAddress == HDD_I2C_TARGET_ADDRESS)) {
+    return false;
+  }
+
+  return true;
 }
 
 static bool i2cWriteReg8(uint8_t targetAddress, uint8_t* txBuf,
@@ -280,8 +359,14 @@ static void i2cErrorHandler(I2C_Transaction* transaction) {
       SEGGER_RTT_printf(0, "I2C serial clock line timed out!\n");
       break;
     case I2C_STATUS_ADDR_NACK:
-      SEGGER_RTT_printf(0, "I2C target address 0x%x not acknowledged!\n",
-                        transaction->targetAddress);
+      if (transaction->targetAddress == HDD_I2C_TARGET_ADDRESS) {
+        SEGGER_RTT_printf(0,
+                          "Optional I2C target address 0x%x not acknowledged\n",
+                          transaction->targetAddress);
+      } else {
+        SEGGER_RTT_printf(0, "I2C target address 0x%x not acknowledged!\n",
+                          transaction->targetAddress);
+      }
       break;
     case I2C_STATUS_DATA_NACK:
       SEGGER_RTT_printf(0, "I2C data byte not acknowledged!\n");
@@ -321,6 +406,7 @@ bool nsa2300Init() {
     SEGGER_RTT_printf(0, "NSA2300: Error initializing I2C\n");
     return false;
   }
+  I2C_setClockTimeout(g_i2cHandle, I2C_CLOCK_TIMEOUT_CYCLES);
   usleep(100000); /* 100ms power-up delay */
   /* Compute P_CONFIG: base value, then add input_swap bit if REG_CTRL bit 1 is set */
   uint8_t pConfig = NSA2300_REG_P_CONFIG_BASE;
@@ -376,20 +462,25 @@ bool nsa2300ReadRegN(uint8_t* txBuf, size_t txBufSize, uint8_t* rxBuf,
 
 bool nsa2300StartMeasurement() {
   uint8_t txBuffer[2];
+  bool ok;
 
   if (g_i2cHandle == NULL) {
     SEGGER_RTT_printf(0, "NSA2300: I2C not initialized\n");
     return false;
   }
 
-  return nsa2300WriteReg8(txBuffer, sizeof(txBuffer), NSA2300_REG_CMD,
-                          NSA2300_CMD_SINGLE_PRESSURE_CONVERSION);
+  SEGGER_RTT_printf(0, "NSA2300: start measurement write begin\n");
+  ok = nsa2300WriteReg8(txBuffer, sizeof(txBuffer), NSA2300_REG_CMD,
+                        NSA2300_CMD_SINGLE_PRESSURE_CONVERSION);
+  SEGGER_RTT_printf(0, "NSA2300: start measurement write %s\n",
+                    ok ? "done" : "failed");
+  return ok;
 }
 
 bool nsa2300WaitForDataReady() {
   uint8_t status = 0;
-  const uint32_t maxPolls = 1000u; /* ~1s at 1ms per poll */
-  const useconds_t pollDelayUs = 1000u;
+  const uint32_t maxPolls = 1000u; /* ~1s at 3ms per poll */
+  const useconds_t pollDelayUs = 3000u;
   uint32_t consecutiveFail = 0;
 
   for (uint32_t poll = 0; poll < maxPolls; poll++) {

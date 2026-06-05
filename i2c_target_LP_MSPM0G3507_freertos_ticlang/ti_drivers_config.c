@@ -166,7 +166,11 @@ const I2CTargetMSPM0_HWAttrs I2CTargetMSPM0HWAttrs[CONFIG_I2CTARGET_COUNT] = {
     {
         .i2c         = I2C0_INST,
         .intNum      = I2C0_INST_INT_IRQN,
-        .intPriority = (~0),
+        /* Below I2C1 controller (level 2): when I2C1's completion ISR preempts
+         * a long I2C0 TX-FIFO refill, I2C0 clock stretching holds SCL low so
+         * the upstream master waits a few us instead of receiving 0xFF, so the
+         * upstream frame/CRC stays intact while the cascade read completes. */
+        .intPriority = (2 << 6),
 
         .sdaPincm    = GPIO_I2C0_IOMUX_SDA,
         .sdaPinIndex = GPIO_I2C0_SDA_PIN,
@@ -178,7 +182,7 @@ const I2CTargetMSPM0_HWAttrs I2CTargetMSPM0HWAttrs[CONFIG_I2CTARGET_COUNT] = {
 
         .clockSource                 = DL_I2C_CLOCK_BUSCLK,
         .clockDivider                = DL_I2C_CLOCK_DIVIDE_1,
-        .txIntFifoThr                = DL_I2C_TX_FIFO_LEVEL_BYTES_1,
+        .txIntFifoThr                = DL_I2C_TX_FIFO_LEVEL_BYTES_2,
         .rxIntFifoThr                = DL_I2C_RX_FIFO_LEVEL_BYTES_1,
         .isClockStretchingEnabled    = true,
         .isAnalogGlitchFilterEnabled = false,
@@ -221,6 +225,10 @@ const I2CMSPM0_HWAttrs I2CMSPM0HWAttrs[CONFIG_I2C_COUNT] = {
     {
         .i2c         = I2C1_INST,
         .intNum      = I2C1_INST_INT_IRQN,
+        /* Above I2C0 target (level 1) so the controller's transfer-complete
+         * interrupt is serviced promptly and the callback fires before the
+         * 200ms wait expires, even while I2C0 is busy with upstream reads.
+         * Level 1 == configMAX_SYSCALL_INTERRUPT_PRIORITY, still ISR-safe. */
         .intPriority = (1 << 6),
 
         .sdaPincm    = GPIO_I2C1_IOMUX_SDA,

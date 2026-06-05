@@ -114,22 +114,36 @@ void SYSCFG_DL_I2C_init(void)
 
     /* Configure Target Mode */
     DL_I2C_setTargetOwnAddress(I2C0_INST, 0x50);
-    DL_I2C_setTargetTXFIFOThreshold(I2C0_INST, DL_I2C_TX_FIFO_LEVEL_EMPTY);
+    DL_I2C_setTargetTXFIFOThreshold(I2C0_INST, DL_I2C_TX_FIFO_LEVEL_BYTES_2);
     DL_I2C_setTargetRXFIFOThreshold(I2C0_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_1);
     DL_I2C_enableTargetTXEmptyOnTXRequest(I2C0_INST);
     DL_I2C_disableTargetTXTriggerInTXMode(I2C0_INST);
-    DL_I2C_disableTargetTXWaitWhenTXFIFOStale(I2C0_INST);
+    /* Hold SCL when TX FIFO is stale so firmware can refill before 0xFF idle
+     * bytes are shifted out (complements clock stretching below). */
+    DL_I2C_enableTargetTXWaitWhenTXFIFOStale(I2C0_INST);
 
-    DL_I2C_disableTargetClockStretching(I2C0_INST);
+    /* Clock stretching MUST stay enabled: with a low TX FIFO trigger threshold
+     * (BYTES_2) the refill window is ~45us @400kHz. If the ISR is late (e.g.
+     * during downstream I2C1 traffic when cascaded), the TX FIFO underflows.
+     * With stretching enabled the target holds SCL low until firmware refills
+     * instead of shifting out idle 0xFF, which is what corrupted the MODBUS CRC
+     * frame on the master side. */
+    DL_I2C_enableTargetClockStretching(I2C0_INST);
 
     /* Workaround for errata I2C_ERR_04 */
     DL_I2C_disableTargetWakeup(I2C0_INST);
-    /* Configure Interrupts */
+    /* Configure Interrupts.
+     * TXFIFO_EMPTY is intentionally NOT enabled: with clock stretching plus
+     * TXWaitWhenTXFIFOStale the FIFO is held (SCL low) before it ever drains
+     * to empty, so this source never fires (observed TXEMPTY=0) and only adds
+     * latent ISR load. TXFIFO_TRIGGER (BYTES_2) handles the steady refill and
+     * TXFIFO_UNDERFLOW remains as the safety net. Removing it lowers the I2C0
+     * ISR rate so the I2C1 controller's completion interrupt is serviced in
+     * time during cascaded traffic. */
     DL_I2C_enableInterrupt(I2C0_INST,
                            DL_I2C_INTERRUPT_TARGET_RXFIFO_TRIGGER |
                            DL_I2C_INTERRUPT_TARGET_START |
                            DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
-                           DL_I2C_INTERRUPT_TARGET_TXFIFO_EMPTY |
                            DL_I2C_INTERRUPT_TARGET_TXFIFO_UNDERFLOW |
                            DL_I2C_INTERRUPT_TARGET_STOP);
 

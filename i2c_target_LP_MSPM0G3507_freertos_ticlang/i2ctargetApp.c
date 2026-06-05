@@ -91,6 +91,7 @@ static volatile uint8_t activeIndex = 0;
 static volatile uint8_t reg82SnapshotLen;
 static volatile uint8_t reg82Snapshot[READY_PAYLOAD_MAX_LEN_BYTES];
 static volatile bool    reg82SnapshotValid = false;
+static volatile bool    reg82Pending = false;
 static volatile uint8_t reg83Snapshot[8];
 static volatile uint8_t reg83SnapshotLen;
 static volatile uint8_t gReg83TxCount = 0;
@@ -169,12 +170,122 @@ static volatile uint32_t gI2cTxUnderflowCount = 0;
 static volatile uint32_t gI2cDefaultCount = 0;
 static volatile uint32_t gI2cLastIidx = 0;
 static volatile uint32_t gReg82ShortLoadCount = 0;
+static volatile uint32_t gI2cSoftRecoverCount = 0;
+static volatile uint32_t gI2cStuckWatchCount = 0;
 static volatile uint8_t gLastRegAddr = 0x00;
 static volatile uint8_t gTxResponseByte = 0xA5;
 static volatile uint8_t gReg82TxCount = 0;
 static volatile uint32_t gI2cPauseDepth = 0;
 
+#define I2C_SOFT_RECOVER_CONFIRM_COUNT 3u
+#define REG82_PENDING_WATCHDOG_GRACE_SECONDS 2u
+
+static void i2cTargetResetDeferredState(void) {
+  gLastRegAddr = 0x00;
+  gTxResponseByte = 0x00;
+  gReg82TxCount = 0;
+  gReg83TxCount = 0;
+  reg83SnapshotLen = 0;
+}
+
+/* ----- REG_DATA_0x82 TX DMA offload -----------------------------------------
+ * A 0x82 data read is normally served by the CPU refilling the 8-byte TX FIFO
+ * from reg82Snapshot[] on every TXFIFO_TRIGGER/EMPTY/UNDERFLOW interrupt. For
+ * long payloads this is the dominant I2C0 ISR load and can delay the I2C1
+ * controller's completion interrupt when cascaded. Routing the I2C0 target TX
+ * FIFO-trigger event to the DMA lets hardware stream the snapshot into the
+ * FIFO with no per-byte ISR. Channel 0 source = reg82Snapshot (byte,
+ * incrementing), destination = I2C0 target TX data register (byte, fixed),
+ * trigger = DMA_I2C0_TX_TRIG, single-transfer mode (one byte per trigger). */
+#define I2C0_TX_DMA_CHANNEL 0u
+static volatile bool gReg82DmaActive = false;
+static volatile uint32_t gReg82DmaCount = 0;
+
+static void i2cTargetInitReg82Dma(void) {
+  static const DL_DMA_Config cfg = {
+      .trigger = DMA_I2C0_TX_TRIG,
+      .triggerType = DL_DMA_TRIGGER_TYPE_EXTERNAL,
+      .transferMode = DL_DMA_SINGLE_TRANSFER_MODE,
+      .extendedMode = DL_DMA_NORMAL_MODE,
+      .srcWidth = DL_DMA_WIDTH_BYTE,
+      .destWidth = DL_DMA_WIDTH_BYTE,
+      .srcIncrement = DL_DMA_ADDR_INCREMENT,
+      .destIncrement = DL_DMA_ADDR_UNCHANGED,
+  };
+  DL_DMA_initChannel(DMA, I2C0_TX_DMA_CHANNEL, &cfg);
+}
+
+/* Hand the current 0x82 snapshot to the DMA and route the TX FIFO trigger to
+ * it. Must run with the TX FIFO already flushed (done at register-pointer
+ * latch). Clock stretching covers the first-byte DMA latency. */
+static void i2cTargetStartReg82Dma(void) {
+  uint8_t len = reg82SnapshotLen;
+  if (len == 0u) {
+    return;
+  }
+  /* Silence the CPU TX FIFO interrupts; the DMA now owns the FIFO. The
+   * gReg82DmaActive guard in the handlers is the race-proof safety net. */
+  DL_I2C_disableInterrupt(I2C0_INST,
+                          DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
+                          DL_I2C_INTERRUPT_TARGET_TXFIFO_EMPTY |
+                          DL_I2C_INTERRUPT_TARGET_TXFIFO_UNDERFLOW);
+  DL_DMA_setSrcAddr(DMA, I2C0_TX_DMA_CHANNEL, (uint32_t)&reg82Snapshot[0]);
+  DL_DMA_setDestAddr(DMA, I2C0_TX_DMA_CHANNEL,
+                     (uint32_t)&I2C0_INST->SLAVE.STXDATA);
+  DL_DMA_setTransferSize(DMA, I2C0_TX_DMA_CHANNEL, len);
+  DL_DMA_enableChannel(DMA, I2C0_TX_DMA_CHANNEL);
+  DL_I2C_enableDMAEvent(I2C0_INST, DL_I2C_EVENT_ROUTE_1,
+                        DL_I2C_DMA_INTERRUPT_TARGET_TXFIFO_TRIGGER);
+  gReg82DmaActive = true;
+  gReg82DmaCount++;
+  /* Diagnostics: snapshot has been fully handed to the DMA engine. */
+  gReg82TxCount = len;
+}
+
+/* Tear down the 0x82 DMA path and restore CPU-driven FIFO servicing. Safe to
+ * call unconditionally; no-op when DMA was not active. */
+static void i2cTargetStopReg82Dma(void) {
+  if (!gReg82DmaActive) {
+    return;
+  }
+  DL_I2C_disableDMAEvent(I2C0_INST, DL_I2C_EVENT_ROUTE_1,
+                         DL_I2C_DMA_INTERRUPT_TARGET_TXFIFO_TRIGGER);
+  DL_DMA_disableChannel(DMA, I2C0_TX_DMA_CHANNEL);
+  /* Restore exactly the CPU TX FIFO interrupts disabled in start so other
+   * registers (e.g. 0x83) keep their pre-DMA servicing baseline. */
+  DL_I2C_enableInterrupt(I2C0_INST,
+                         DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
+                         DL_I2C_INTERRUPT_TARGET_TXFIFO_EMPTY |
+                         DL_I2C_INTERRUPT_TARGET_TXFIFO_UNDERFLOW);
+  gReg82DmaActive = false;
+}
+
+static void i2cTargetSoftRecover(void) {
+  NVIC_DisableIRQ(I2C0_INT_IRQn);
+  i2cTargetStopReg82Dma();
+  DL_I2C_disableTarget(I2C0_INST);
+  DL_I2C_flushTargetTXFIFO(I2C0_INST);
+  DL_I2C_flushTargetRXFIFO(I2C0_INST);
+  DL_I2C_clearInterruptStatus(I2C0_INST,
+                              DL_I2C_INTERRUPT_TARGET_RXFIFO_TRIGGER |
+                              DL_I2C_INTERRUPT_TARGET_TXFIFO_TRIGGER |
+                              DL_I2C_INTERRUPT_TARGET_TXFIFO_EMPTY |
+                              DL_I2C_INTERRUPT_TARGET_TXFIFO_UNDERFLOW |
+                              DL_I2C_INTERRUPT_TARGET_STOP |
+                              DL_I2C_INTERRUPT_TARGET_START);
+  i2cTargetResetDeferredState();
+  reg82SnapshotValid = false;
+  reg82Pending = false;
+  gI2cSoftRecoverCount++;
+  DL_I2C_enableTarget(I2C0_INST);
+  NVIC_ClearPendingIRQ(I2C0_INT_IRQn);
+  NVIC_EnableIRQ(I2C0_INT_IRQn);
+}
+
 static void i2cTargetLoadReg82Chunk(void) {
+  if (gReg82DmaActive) {
+    return; /* DMA owns the TX FIFO for this 0x82 read */
+  }
   while (gReg82TxCount < reg82SnapshotLen) {
     if (!DL_I2C_transmitTargetDataCheck(
             I2C0_INST, reg82Snapshot[gReg82TxCount])) {
@@ -185,6 +296,9 @@ static void i2cTargetLoadReg82Chunk(void) {
 }
 
 static void i2cTargetLoadReg82OnRequest(void) {
+  if (gReg82DmaActive) {
+    return; /* DMA owns the TX FIFO for this 0x82 read */
+  }
   if ((gReg82TxCount < reg82SnapshotLen) &&
       ((DL_I2C_getTargetStatus(I2C0_INST) &
         DL_I2C_TARGET_STATUS_TRANSMIT_REQUEST) != 0u)) {
@@ -205,6 +319,7 @@ static void i2cTargetPrepareReg82Snapshot(void) {
   memcpy((void *)reg82Snapshot, (const void *)payloadBuf[index], len);
   reg82SnapshotLen = len;
   reg82SnapshotValid = true;
+  reg82Pending = true;
   gReg82TxCount = 0u;
 }
 
@@ -337,15 +452,70 @@ void* mainThread(void* arg0) {
     SEGGER_RTT_printf(0, "I2CTarget: failed to create calibrationTask (static)\n");
   }
 
-  /* Now enable the I2C IRQ */
+  /* One-time DMA channel setup for streaming REG_DATA_0x82 payloads into the
+   * I2C0 target TX FIFO. The per-transaction src/dest/size are programmed in
+   * i2cTargetStartReg82Dma(); this only configures the static channel mode. */
+  i2cTargetInitReg82Dma();
+
+  /* I2C0 target: priority 2 (below I2C1 controller at level 1) so the
+   * controller's transfer-complete interrupt can preempt a long I2C0 TX-FIFO
+   * refill and its callback fires before the 200ms wait expires. I2C0 clock
+   * stretching protects the upstream frame during that preemption. Level 2 is
+   * still >= configMAX_SYSCALL boundary, so the calibration
+   * vTaskNotifyGiveFromISR remains valid. */
+  NVIC_SetPriority(I2C0_INT_IRQn, (2u << 6));
   NVIC_EnableIRQ(I2C0_INT_IRQn);
   while (1) {
+    static uint32_t lastIrqCount = 0;
+    static uint32_t lastStopCount = 0;
+    static uint32_t lastTargetStatus = 0;
+    static uint32_t reg82PendingAgeSeconds = 0;
+    uint32_t targetStatus;
+    bool stuckCandidate;
+    bool pendingWindow;
+
     GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
     sleep(1);
     GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_ON);
+    targetStatus = DL_I2C_getTargetStatus(I2C0_INST);
+    pendingWindow = reg82Pending;
+    if (reg82Pending) {
+      if (reg82PendingAgeSeconds < REG82_PENDING_WATCHDOG_GRACE_SECONDS) {
+        reg82PendingAgeSeconds++;
+      } else {
+        reg82Pending = false;
+        i2cTargetResetDeferredState();
+        reg82PendingAgeSeconds = 0u;
+        pendingWindow = false;
+      }
+    } else {
+      reg82PendingAgeSeconds = 0u;
+    }
+    stuckCandidate = (((targetStatus & DL_I2C_TARGET_STATUS_BUS_BUSY) != 0u) &&
+                      (gI2cIrqCount == lastIrqCount) &&
+                      (gI2cStopCount == lastStopCount) &&
+                      (targetStatus == lastTargetStatus));
+    if (stuckCandidate) {
+      if (gI2cStuckWatchCount < I2C_SOFT_RECOVER_CONFIRM_COUNT) {
+        gI2cStuckWatchCount++;
+      }
+    } else {
+      gI2cStuckWatchCount = 0u;
+    }
+    if (pendingWindow) {
+      gI2cStuckWatchCount = 0u;
+    } else if (gI2cStuckWatchCount >= I2C_SOFT_RECOVER_CONFIRM_COUNT) {
+      i2cTargetSoftRecover();
+      gI2cStuckWatchCount = 0u;
+    }
+    if (!pendingWindow) {
+      lastIrqCount = gI2cIrqCount;
+      lastStopCount = gI2cStopCount;
+      lastTargetStatus = targetStatus;
+    }
     SEGGER_RTT_printf(
         0,
-        "IRQ=%lu START=%lu RXTRIG=%lu TXTRIG=%lu TXEMPTY=%lu TXDONE=%lu RXDONE=%lu STOP=%lu OF=%lu UF=%lu DEF=%lu IIDX=%lu R82TX=%u R82LEN=%u R82SHORT=%lu gRxCount=%lu P0=0x%02x P1=0x%02x\n",
+        "IRQ=%lu START=%lu RXTRIG=%lu TXTRIG=%lu TXEMPTY=%lu TXDONE=%lu RXDONE=%lu STOP=%lu OF=%lu UF=%lu DEF=%lu IIDX=%lu R82TX=%u R82LEN=%u R82PEND=%u R82SHORT=%lu SOFTREC=%lu STUCK=%lu TSTAT=0x%08lx gRxCount=%lu P0=0x%02x P1=0x%02x\n",
         (unsigned long)gI2cIrqCount, (unsigned long)gI2cStartCount,
         (unsigned long)gI2cRxTrigCount, (unsigned long)gI2cTxTrigCount,
         (unsigned long)gI2cTxEmptyCount,
@@ -354,7 +524,11 @@ void* mainThread(void* arg0) {
         (unsigned long)gI2cTxUnderflowCount,
         (unsigned long)gI2cDefaultCount, (unsigned long)gI2cLastIidx,
         (unsigned)gReg82TxCount, (unsigned)reg82SnapshotLen,
+        (unsigned)reg82Pending,
         (unsigned long)gReg82ShortLoadCount,
+        (unsigned long)gI2cSoftRecoverCount,
+        (unsigned long)gI2cStuckWatchCount,
+        (unsigned long)targetStatus,
         (unsigned long)gRxCount, gRxPacket[0], gRxPacket[1]);
   }
 }
@@ -402,9 +576,13 @@ void I2C0_IRQHandler(void)
           /* New register pointer received: clear stale TX bytes and preload
            * first response byte to avoid controller blocking at read start. */
           DL_I2C_flushTargetTXFIFO(I2C0_INST);
+          /* Tear down any 0x82 DMA left over from a previous read before
+           * servicing the new register (a fresh 0x82 read restarts it). */
+          i2cTargetStopReg82Dma();
           if ((gLastRegAddr != REG_READY_0x81) &&
               (gLastRegAddr != REG_DATA_0x82)) {
             reg82SnapshotValid = false;
+            reg82Pending = false;
           }
 
           if (gLastRegAddr == REG_MODE_0x80) {
@@ -425,6 +603,7 @@ void I2C0_IRQHandler(void)
               gTxPacket[gTxCount++] = gTxResponseByte;
             }
           } else if (gLastRegAddr == REG_DATA_0x82) {
+            reg82Pending = false;
             gReg82TxCount = 0;
             gI2cTxDoneCount = 0;
             /* If the master reads 0x82 without a prior 0x81 length read, build
@@ -432,8 +611,10 @@ void I2C0_IRQHandler(void)
             if (!reg82SnapshotValid) {
               i2cTargetPrepareReg82Snapshot();
             }
-            i2cTargetLoadReg82Chunk();
-            if (gReg82TxCount < reg82SnapshotLen) {
+            /* Stream the snapshot to the TX FIFO via DMA (no per-byte ISR).
+             * Clock stretching covers the first-byte fill latency. */
+            i2cTargetStartReg82Dma();
+            if (!gReg82DmaActive && (gReg82TxCount < reg82SnapshotLen)) {
               gReg82ShortLoadCount++;
             }
           } else if (gLastRegAddr == REG_CALIBRATION_0x83) {
@@ -546,16 +727,18 @@ void I2C0_IRQHandler(void)
     case DL_I2C_IIDX_TARGET_STOP:
       /* no printing from ISR */
       gI2cStopCount++;
+      /* Always tear down the 0x82 DMA at STOP so the next transaction starts
+       * from a clean CPU-served FIFO state. No-op when DMA was not active. */
+      i2cTargetStopReg82Dma();
       if (gLastRegAddr == REG_DATA_0x82) {
         reg82SnapshotValid = false;
+        reg82Pending = false;
       }
       dataRx = false;
       gRxCount = 0;
-      gLastRegAddr = 0x00;
-      gTxResponseByte = 0x00;
-      gReg82TxCount = 0;
-      gReg83TxCount = 0;
-      reg83SnapshotLen = 0;
+      if (!reg82Pending) {
+        i2cTargetResetDeferredState();
+      }
       regPointerLatched = false;
       GPIO_write(CONFIG_GPIO_LED_0, CONFIG_GPIO_LED_0_OFF);
       break;

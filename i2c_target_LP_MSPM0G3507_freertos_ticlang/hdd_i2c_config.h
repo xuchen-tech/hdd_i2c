@@ -18,8 +18,8 @@
 #define REG_CTRL_AVGCOUNT_8           (0u << 3)  /*  8 samples */
 #define REG_CTRL_AVGCOUNT_16          (1u << 3)  /* 16 samples (default) */
 #define REG_CTRL_AVGCOUNT_32          (2u << 3)  /* 32 samples */
-/* Default: input_swap=1 (P_CONFIG=0x71), calibration off, averaging off, count=16 */
-#define REG_CTRL_DEFAULT              (REG_CTRL_BIT1_INPUT_SWAP | REG_CTRL_AVGCOUNT_16)
+/* Default: input_swap=0 (P_CONFIG=0x31), calibration off, averaging off, count=16 */
+#define REG_CTRL_DEFAULT              (REG_CTRL_AVGCOUNT_16)
 
 /*  PT1000 definition    */
 typedef struct {
